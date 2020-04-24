@@ -1,0 +1,25 @@
+name: repository
+description: A data fetching and persistence abstraction
+version: 0.0.1
+author: "Daniel Cardona Rojas"
+
+environment:
+  sdk: ">=2.1.0 <3.0.0"
+
+dependencies:
+  dartz:
+  equatable: ^1.1.0
+  http: ^0.12.0+4
+  hive:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  json_serializable: ^3.2.5
+  build_runner:
+  mockito:
+  freezed:
+  freezed_annotation:
+  uuid: 2.0.4
+  flutter_test:
+    sdk: flutter
