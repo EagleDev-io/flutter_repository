@@ -1,4 +1,4 @@
-import '../repository.dart';
+import '../repository_failure.dart';
 
 class SynchronizationBatchResult {
   final int proccessed;

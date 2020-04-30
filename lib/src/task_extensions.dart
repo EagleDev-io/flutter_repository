@@ -1,5 +1,5 @@
 import 'package:dartz/dartz.dart';
-import './repository.dart';
+import './repository_failure.dart';
 
 extension TaskEitherAlternative<T> on Task<Either<Failure, T>> {
   Task<Either<Failure, T>> orDefault(Task<Either<Failure, T>> task) {

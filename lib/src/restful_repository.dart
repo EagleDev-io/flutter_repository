@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:repository/src/repository_failure.dart';
+
 import 'repository.dart';
 import 'identifiable.dart';
 import 'package:dartz/dartz.dart';

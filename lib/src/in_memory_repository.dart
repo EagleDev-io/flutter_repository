@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:repository/src/repository_failure.dart';
 
 import './repository.dart';
 import './identifiable.dart';

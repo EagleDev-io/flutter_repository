@@ -6,6 +6,7 @@ import 'package:repository/src/in_memory_repository.dart';
 import 'package:repository/src/network_info.dart';
 import 'package:repository/src/offline_first/offline_first_repository.dart';
 import 'package:repository/src/offline_first/synchronized.dart';
+import 'package:repository/src/repository_failure.dart';
 import 'package:repository/src/task_extensions.dart';
 import 'package:repository/src/repository.dart';
 import 'package:uuid/uuid.dart';
