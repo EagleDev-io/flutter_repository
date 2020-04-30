@@ -1,5 +1,7 @@
 library offline_first_repository;
 
+import 'package:repository/src/repository_failure.dart';
+
 import '../repository.dart';
 import '../identifiable.dart';
 import '../network_info.dart';

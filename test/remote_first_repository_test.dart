@@ -1,5 +1,4 @@
 import 'package:dartz/dartz.dart';
-import 'package:equatable/equatable.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:mockito/mockito.dart';
@@ -7,6 +6,7 @@ import 'package:repository/src/identifiable.dart';
 import 'package:repository/src/network_info.dart';
 import 'package:repository/src/remote_first_repository.dart';
 import 'package:repository/src/repository.dart';
+import 'package:repository/src/repository_failure.dart';
 import 'todo_item.dart';
 
 class MockRemoteRepository extends Mock implements Repository<TodoItem> {}
@@ -241,7 +241,11 @@ void main() {
       test('fails withouth calling remote when connectiviy is down', () async {
         final result = await sut.update(tEntity);
         verifyZeroInteractions(mockRemoteRepository);
-        expect(result, Left(RepositoryFailure.connectivity()));
+
+        final error = result.fold((err) => err, (_) => null);
+
+        expect(error, RepositoryFailure.connectivity());
+        expect(error, isA<RepositoryFailure>());
       });
     });
   });

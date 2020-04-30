@@ -10,3 +10,4 @@ export 'src/offline_first/synchronization_batch_result.dart';
 export 'src/offline_first/synchronized.dart';
 export 'src/identifiable.dart';
 export 'src/hive_adapters.dart';
+export 'src/repository_failure.dart';

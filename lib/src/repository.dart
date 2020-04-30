@@ -1,33 +1,8 @@
 import 'package:dartz/dartz.dart';
-import 'package:equatable/equatable.dart';
+import 'package:repository/src/repository_failure.dart';
 
 import './identifiable.dart';
 import './task_extensions.dart';
-
-abstract class Failure {}
-
-enum RepositoryFailureOrigin { local, remote, connectivity }
-
-class RepositoryFailure implements Failure, EquatableMixin {
-  final RepositoryFailureOrigin origin;
-  final String message;
-  RepositoryFailure(this.origin, this.message);
-
-  factory RepositoryFailure.server(String message) =>
-      RepositoryFailure(RepositoryFailureOrigin.remote, message);
-
-  factory RepositoryFailure.cache(String message) =>
-      RepositoryFailure(RepositoryFailureOrigin.local, message);
-
-  factory RepositoryFailure.connectivity() => RepositoryFailure(
-      RepositoryFailureOrigin.connectivity, 'No internet connection');
-
-  @override
-  List<Object> get props => [origin, message];
-
-  @override
-  bool get stringify => true;
-}
 
 abstract class Repository<EntityType> {
   /// Saves a new instance to repository
