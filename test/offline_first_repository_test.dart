@@ -10,7 +10,7 @@ import 'package:repository/src/repository_failure.dart';
 import 'package:repository/src/task_extensions.dart';
 import 'package:repository/src/repository.dart';
 import 'package:uuid/uuid.dart';
-import 'repository_spy.dart';
+import './spies/repository_spy.dart';
 import 'todo_item.dart';
 
 class MockRemoteRepository extends Mock implements Repository<TodoItem> {}
