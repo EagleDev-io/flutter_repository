@@ -4,6 +4,15 @@ import 'package:repository/src/repository_failure.dart';
 import './identifiable.dart';
 import './task_extensions.dart';
 
+enum RepositoryOperation {
+  getAll,
+  getById,
+  add,
+  update,
+  delete,
+  edit,
+}
+
 abstract class Repository<EntityType> {
   /// Saves a new instance to repository
   ///

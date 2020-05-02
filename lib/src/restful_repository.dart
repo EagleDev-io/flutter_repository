@@ -1,5 +1,6 @@
-import 'dart:convert';
+import 'dart:convert' show JsonCodec;
 
+import 'package:repository/src/http_exception.dart';
 import 'package:repository/src/repository_failure.dart';
 
 import 'repository.dart';
@@ -8,11 +9,17 @@ import 'package:dartz/dartz.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
+/// Implements CRUD for a well defined restful resource.
+///
+/// Note: an HttpFailure is returned if a response si outside the 200 range.
+/// Resource nesting is not supported. To do this combine on or more RestfulRepository
+/// instances.
 class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
   final String resourceUrl;
-  final Function1<Entity, Map<String, dynamic>> toJson;
-  final Function1<Map<String, dynamic>, Entity> fromJson;
+  final Map<String, dynamic> Function(Entity, RepositoryOperation) toJson;
+  final Entity Function(Map<String, dynamic>, RepositoryOperation) fromJson;
   final http.Client client;
+  final JsonCodec jsonCodec;
 
   static const void unit = null;
 
@@ -22,18 +29,19 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
   }
 
   RestfulRepository({
+    JsonCodec jsonCodec,
     @required this.client,
     @required this.resourceUrl,
     @required this.toJson,
     @required this.fromJson,
-  });
+  }) : this.jsonCodec = jsonCodec ?? JsonCodec();
 
   @override
   Future<Either<Failure, Entity>> add(Entity entity) {
     final task = Task(() async {
-      final jsonMap = toJson(entity);
+      final jsonMap = toJson(entity, RepositoryOperation.add);
       jsonMap.removeWhere((key, value) => value == null);
-      final jsonString = json.encode(jsonMap);
+      final jsonString = jsonCodec.encode(jsonMap);
       final response = await client.post(
         '$resourceUrl',
         body: jsonString,
@@ -41,12 +49,13 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
-      ); //.validate();
-      final createdJsonMap = json.decode(response.body) as Map<String, dynamic>;
-      final createdObject = fromJson(createdJsonMap);
+      ).validate();
+      final createdJsonMap =
+          jsonCodec.decode(response.body) as Map<String, dynamic>;
+      final createdObject = fromJson(createdJsonMap, RepositoryOperation.add);
       return createdObject;
-    }).attempt().map((either) =>
-        either.leftMap((errorObj) => RepositoryFailure.server('$errorObj')));
+    }).attempt().map(
+        (either) => either.leftMap((errorObj) => handleException(errorObj)));
     return task.run();
   }
 
@@ -67,13 +76,14 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
     final task = Task(() async {
       final response = await client.get(resourceUrl);
       final bodyString = response.body;
-      final jsonList = jsonDecode(bodyString) as List<dynamic>;
+      final jsonList = jsonCodec.decode(bodyString) as List<dynamic>;
       final objects = jsonList
-          .map((jsonMap) => fromJson(jsonMap as Map<String, dynamic>))
+          .map((jsonMap) => fromJson(
+              jsonMap as Map<String, dynamic>, RepositoryOperation.getAll))
           .toList();
       return objects;
     }).attempt().map((either) => either.leftMap(
-          (errorObj) => RepositoryFailure.server('$errorObj'),
+          (errorObj) => handleException(errorObj),
         ));
 
     return task.run();
@@ -84,12 +94,12 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
     final task = Task(() async {
       final response = await client.get('$resourceUrl/${id.value}').validate();
       final bodyString = response.body;
-      final jsonMap = jsonDecode(bodyString) as Map<String, dynamic>;
-      final object = fromJson(jsonMap);
+      final jsonMap = jsonCodec.decode(bodyString) as Map<String, dynamic>;
+      final object = fromJson(jsonMap, RepositoryOperation.getById);
       return object;
-    }).attempt().map((either) => either.leftMap(
-          (errorObj) => RepositoryFailure.server('$errorObj'),
-        ));
+    })
+        .attempt()
+        .map((either) => either.leftMap((error) => handleException(error)));
 
     return task.run();
   }
@@ -97,8 +107,8 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
   @override
   Future<Either<Failure, void>> update(Entity entity) async {
     final task = Task(() {
-      final jsonMap = toJson(entity);
-      final jsonString = json.encode(jsonMap);
+      final jsonMap = toJson(entity, RepositoryOperation.update);
+      final jsonString = jsonCodec.encode(jsonMap);
       return client.put(
         resourceURLForEntity(entity),
         body: jsonString,
@@ -107,9 +117,8 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
           'Content-Type': 'application/json',
         },
       ).validate();
-    }).attempt().map((either) => either
-        .leftMap((errorObj) => RepositoryFailure.server('$errorObj'))
-        .map((_) => unit));
+    }).attempt().map(
+        (either) => either.leftMap((e) => handleException(e)).map((_) => unit));
     return task.run();
   }
 
@@ -117,11 +126,11 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
   Future<Either<Failure, Entity>> edit<E extends Entity>(
       UniqueId id, E operation) {
     final task = Task(() async {
-      final patch = toJson(operation);
+      final patch = toJson(operation, RepositoryOperation.edit);
 
       patch.removeWhere((key, value) => value == null);
 
-      final jsonString = json.encode(patch);
+      final jsonString = jsonCodec.encode(patch);
       final response = await client.patch(
         '$resourceUrl/${id.value}',
         body: jsonString,
@@ -130,25 +139,34 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
           'Content-Type': 'application/json',
         },
       ).validate();
-      final responseMap = json.decode(response.body) as Map<String, dynamic>;
-      final object = fromJson(responseMap);
+      final responseMap =
+          jsonCodec.decode(response.body) as Map<String, dynamic>;
+      final object = fromJson(responseMap, RepositoryOperation.edit);
 
       return object;
-    }).attempt().map((either) => either.leftMap(
-          (errorObj) => RepositoryFailure.server('$errorObj'),
-        ));
+    }).attempt().map(
+          (either) => either.leftMap((error) => handleException(error)),
+        );
 
     return task.run();
+  }
+
+  Failure handleException(Exception error) {
+    if (error is HttpException) {
+      return HttpFailure.fromException(error);
+    }
+    return RepositoryFailure.server('$error');
   }
 }
 
 extension ValidateHttpResponse on Future<http.Response> {
   Future<http.Response> ensure(
-      {bool Function(http.Response) satisfies, Exception otherwise}) {
+      {bool Function(http.Response) satisfies,
+      Exception Function(http.Response) otherwise}) {
     return then((response) {
       final passesCheck = satisfies(response);
       if (!passesCheck) {
-        throw otherwise;
+        throw otherwise(response);
       }
       return response;
     });
@@ -156,14 +174,8 @@ extension ValidateHttpResponse on Future<http.Response> {
 
   Future<http.Response> validate() {
     return ensure(
-        satisfies: (response) {
-          final hasCorrectStatusCode =
-              200 >= response.statusCode && response.statusCode < 300;
-          final hasCorrectContentType = response.headers['content-type']
-                  ?.startsWith('application/json') ??
-              false;
-          return hasCorrectStatusCode && hasCorrectContentType;
-        },
-        otherwise: Exception('Http response validation failure'));
+        satisfies: (response) => response.statusCode < 400,
+        otherwise: (response) => HttpException(
+            statusCode: response.statusCode, body: response.body));
   }
 }

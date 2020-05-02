@@ -1,4 +1,6 @@
 import 'package:equatable/equatable.dart';
+import 'package:repository/repository.dart';
+import 'package:repository/src/http_exception.dart';
 
 abstract class Failure {}
 
@@ -23,4 +25,17 @@ class RepositoryFailure extends Equatable implements Failure {
 
   @override
   bool get stringify => true;
+}
+
+class HttpFailure extends Equatable implements Failure {
+  final int statusCode; // 400 < code
+  final String body;
+
+  HttpFailure({this.statusCode, this.body});
+  factory HttpFailure.fromException(HttpException exception) {
+    return HttpFailure(statusCode: exception.statusCode, body: exception.body);
+  }
+
+  @override
+  List<Object> get props => [statusCode, body];
 }
