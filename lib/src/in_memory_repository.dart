@@ -9,17 +9,20 @@ class InMemoryRepository<E extends WithId> implements Repository<E> {
 
   final Map<String, E> entitySet;
 
-  factory InMemoryRepository.fromList(List<E> entities) {
+  final Duration delay;
+
+  factory InMemoryRepository.fromList(List<E> entities, {Duration delay}) {
     final map = Map<String, E>.fromEntries(
         entities.map((e) => MapEntry(e.stringedId, e)));
-    return InMemoryRepository._(map);
+    return InMemoryRepository._(map, delay);
   }
 
-  factory InMemoryRepository.blank() {
-    return InMemoryRepository<E>._({});
+  factory InMemoryRepository.blank({Duration delay}) {
+    return InMemoryRepository<E>._({}, delay);
   }
 
-  InMemoryRepository._(this.entitySet);
+  InMemoryRepository._(this.entitySet, Duration delay)
+      : this.delay = delay ?? const Duration(seconds: 0);
 
   String entityId(E entity) => entity.stringedId;
 
@@ -38,12 +41,14 @@ class InMemoryRepository<E extends WithId> implements Repository<E> {
 
   @override
   Future<Either<Failure, List<E>>> getAll() async {
+    await Future.delayed(delay);
     final list = entitySet.values.toList();
     return Right(list);
   }
 
   @override
   Future<Either<Failure, E>> getById(UniqueId id) async {
+    await Future.delayed(delay);
     final entity = entitySet[id.value];
     if (entity == null)
       return Left(RepositoryFailure.cache('Entity not found'));

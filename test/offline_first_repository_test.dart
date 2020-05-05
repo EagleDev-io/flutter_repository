@@ -12,6 +12,7 @@ import 'package:repository/src/repository.dart';
 import 'package:uuid/uuid.dart';
 import './spies/repository_spy.dart';
 import 'todo_item.dart';
+import 'repository_extensions.dart';
 
 class MockRemoteRepository extends Mock implements Repository<TodoItem> {}
 
@@ -203,16 +204,4 @@ void main() {
       verifyNoMoreInteractions(mockRemoteRepository);
     });
   });
-}
-
-extension RepositoryTestingExtensions<T> on Repository<T> {
-  Future<int> get entityCount async {
-    final result = await getAll();
-    return result.fold((_) => 0, (ls) => ls.length);
-  }
-
-  Future<T> get getFirst async {
-    final result = await getAll();
-    return result.fold((_) => null, (ls) => ls.first);
-  }
 }
