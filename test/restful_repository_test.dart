@@ -9,6 +9,7 @@ import 'package:repository/repository.dart';
 import './spies/codable_spy.dart';
 import './spies/json_codec_spy.dart';
 import 'todo_item.dart';
+import 'repository_extensions.dart';
 
 class MockHttpClient extends Mock implements Client {}
 
@@ -21,6 +22,11 @@ void main() {
 
   final tTodoItem = TodoItem.newItem('Test task');
   final tTodoItemWithId = tTodoItem.copyWith(id: '1');
+  final tTodoItems = [
+    TodoItem(id: '10', title: 'Test task'),
+    TodoItem(id: '11', title: 'Test task'),
+    TodoItem(id: '12', title: 'Test task'),
+  ];
 
   setUp(() {
     mockJsonCodec = JsonCodecSpy();
@@ -53,7 +59,17 @@ void main() {
 
   test('''attepts to parse list of entities even if response is enveloped
   by inspecting first value which is a list.
-  ''', () {});
+  ''', () async {
+    when(mockHttpClient.get(any, headers: anyNamed('headers')))
+        .thenAnswer((_) async {
+      final jsonItems = tTodoItems.map((item) => item.toJson()).toList();
+      final body = json.encode({'items': jsonItems});
+      return Response(body, 200);
+    });
+
+    final count = await sut.entityCount;
+    expect(count, tTodoItems.length);
+  });
 
   test('Returns non null entity when creating', () {});
 
@@ -76,8 +92,7 @@ void main() {
         .thenAnswer(
             (_) async => Response(json.encode(tTodoItemWithId.toJson()), 200));
 
-    final result =
-        await sut.edit(UniqueId('1'), TodoItemEdit(completed: false));
+    final result = await sut.edit(UniqueId('1'), {'completed': false});
 
     final matcher =
         (Map<String, dynamic> map) => !map.values.any((v) => v == null);

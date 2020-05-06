@@ -4,6 +4,8 @@ import 'package:repository/src/repository_failure.dart';
 import './repository.dart';
 import './identifiable.dart';
 
+typedef Endo<T> = void Function(T);
+
 class InMemoryRepository<E extends WithId> implements Repository<E> {
   static const void unit = null;
 
@@ -62,10 +64,13 @@ class InMemoryRepository<E extends WithId> implements Repository<E> {
     return Right(unit);
   }
 
-  @override
-  Future<Either<Failure, E>> edit<O extends E>(UniqueId id, O operation) {
-    throw UnimplementedError();
-    final entity = entitySet[id.value];
-    return Future.value(Right(entity));
-  }
+  // @override
+  // Future<Either<Failure, E>> edit(UniqueId id, operation) async {
+  //   final entity = entitySet[id.value];
+  //   if (entity == null)
+  //     return Left(RepositoryFailure.cache('Entity not found'));
+
+  //   final updated = operation(entity);
+  //   return Right(updated);
+  // }
 }
