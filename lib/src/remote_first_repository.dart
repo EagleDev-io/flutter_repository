@@ -119,23 +119,6 @@ class RemoteFirstRepository<Entity> implements Repository<Entity> {
         .run();
   }
 
-  @override
-  Future<Either<Failure, Entity>> edit<E extends Entity>(
-      UniqueId id, E operation) {
-    final remoteTask = Task(() => remoteRepository.edit(id, operation));
-
-    final task = remoteTask.bindEither((updatedObj) => Task(() async {
-          final result = await cacheRepository.update(updatedObj);
-          return result.map((_) => updatedObj);
-        }));
-
-    return Task(() => networkChecker.isConnected)
-        .flatMap((isConnected) => isConnected
-            ? task
-            : connectivityFailureTask as Task<Either<Failure, Entity>>)
-        .run();
-  }
-
   // =========================== Helpers ===================
   Future<void> clearAllFromCache() async {
     final result = await cacheRepository.getAll();

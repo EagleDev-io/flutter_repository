@@ -14,7 +14,8 @@ import 'package:meta/meta.dart';
 /// Note: an HttpFailure is returned if a response si outside the 200 range.
 /// Resource nesting is not supported. To do this combine on or more RestfulRepository
 /// instances.
-class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
+class RestfulRepository<Entity extends WithId>
+    implements Repository<Entity>, Edit<Map<String, dynamic>, Entity> {
   final String resourceUrl;
   final Map<String, dynamic> Function(Entity, RepositoryOperation) toJson;
   final Entity Function(Map<String, dynamic>, RepositoryOperation) fromJson;
@@ -76,12 +77,20 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
     final task = Task(() async {
       final response = await client.get(resourceUrl);
       final bodyString = response.body;
-      final jsonList = jsonCodec.decode(bodyString) as List<dynamic>;
-      final objects = jsonList
-          .map((jsonMap) => fromJson(
-              jsonMap as Map<String, dynamic>, RepositoryOperation.getAll))
-          .toList();
-      return objects;
+      final json = jsonCodec.decode(bodyString);
+      if (json is List<dynamic>) {
+        final objects = json
+            .map((jsonMap) => fromJson(
+                jsonMap as Map<String, dynamic>, RepositoryOperation.getAll))
+            .toList();
+      } else if (json is Map<String, dynamic>) {
+        final jsonList = json.values.whereType<List<dynamic>>().first;
+        final objects = jsonList
+            .map((jsonMap) => fromJson(
+                jsonMap as Map<String, dynamic>, RepositoryOperation.getAll))
+            .toList();
+        return objects;
+      }
     }).attempt().map((either) => either.leftMap(
           (errorObj) => handleException(errorObj),
         ));
@@ -123,11 +132,10 @@ class RestfulRepository<Entity extends WithId> implements Repository<Entity> {
   }
 
   @override
-  Future<Either<Failure, Entity>> edit<E extends Entity>(
-      UniqueId id, E operation) {
+  Future<Either<Failure, Entity>> edit(
+      UniqueId id, Map<String, dynamic> operation) {
     final task = Task(() async {
-      final patch = toJson(operation, RepositoryOperation.edit);
-
+      final patch = operation;
       patch.removeWhere((key, value) => value == null);
 
       final jsonString = jsonCodec.encode(patch);

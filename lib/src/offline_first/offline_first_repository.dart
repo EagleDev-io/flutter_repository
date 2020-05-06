@@ -60,12 +60,6 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
   }
 
   @override
-  Future<Either<Failure, Entity>> edit<O extends Entity>(
-      UniqueId id, O operation) {
-    return null;
-  }
-
-  @override
   Future<Either<Failure, List<Entity>>> getAll() async {
     final result = await local.getAll();
     final filteredResult = result.map(
