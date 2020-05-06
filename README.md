@@ -21,13 +21,34 @@ Repository facilitates different data fetching strategies by providing generic c
 
 **Define a Failure type**
 
+Make sure you extend the Failure type defined in this package.
+
+```dart
+abstract MyAppFailures extends Failure { }
+```
+
 **Satisfy repository entity constraints**
+
+Some concrete repositories will define a type constraint on their generic variable.
+You will need to satisfy these constraints in your entity.
+
+InMemoryRepository being backed by a Map (key-value storage) requires its underlying entity
+to define some kind of id.
+
+```dart
+class InMemoryRepository<E extends WithId> implements Repository<E> { ... }
+```
 
 
 ## Features
 
+**Out of the box repositories**
+
 - OfflineFirstRepository (plug in your custom repositories)
 - RestfulRepository (DRY on boilerplate CRUD implementations)
+- HiveRepository
+- InMemoryRepository 
+
 
 ## Custom repositories
 
