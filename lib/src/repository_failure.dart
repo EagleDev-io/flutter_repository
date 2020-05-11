@@ -2,11 +2,11 @@ import 'package:equatable/equatable.dart';
 import 'package:repository/repository.dart';
 import 'package:repository/src/http_exception.dart';
 
-abstract class Failure {}
+abstract class RepositoryBaseFailure {}
 
 enum RepositoryFailureOrigin { local, remote, connectivity }
 
-class RepositoryFailure extends Equatable implements Failure {
+class RepositoryFailure extends Equatable implements RepositoryBaseFailure {
   final RepositoryFailureOrigin origin;
   final String message;
   RepositoryFailure(this.origin, this.message);
@@ -27,7 +27,7 @@ class RepositoryFailure extends Equatable implements Failure {
   bool get stringify => true;
 }
 
-class HttpFailure extends Equatable implements Failure {
+class HttpFailure extends Equatable implements RepositoryBaseFailure {
   final int statusCode; // 400 < code
   final String body;
 

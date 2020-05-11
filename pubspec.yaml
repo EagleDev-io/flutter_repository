@@ -1,6 +1,6 @@
 name: repository
 description: A data fetching and persistence abstraction
-version: 0.0.1
+version: 0.1.0
 author: "Daniel Cardona Rojas"
 
 environment:

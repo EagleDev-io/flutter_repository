@@ -1,14 +1,11 @@
 import 'dart:convert' show JsonCodec;
 
-import 'package:repository/src/http_exception.dart';
 import 'package:repository/src/http_repository.dart';
-import 'package:repository/src/repository_failure.dart';
-
-import 'repository.dart';
 import 'identifiable.dart';
-import 'package:dartz/dartz.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
+
+import 'repository_operation.dart';
 
 /// Implements CRUD for a well defined restful resource.
 ///
@@ -17,9 +14,6 @@ import 'package:meta/meta.dart';
 /// instances.
 class RestfulRepository<Entity extends WithId> extends HttpRepository<Entity> {
   final String resourceUrl;
-  // final Map<String, dynamic> Function(Entity, RepositoryOperation) toJson;
-  // final Entity Function(Map<String, dynamic>, RepositoryOperation) fromJson;
-  // final http.Client client;
 
   RestfulRepository({
     @required http.Client client,
@@ -30,8 +24,12 @@ class RestfulRepository<Entity extends WithId> extends HttpRepository<Entity> {
         Entity Function(Map<String, dynamic>, RepositoryOperation) fromJson,
   }) : super(
             client: client,
-            operationUrl: (operation, entity) {
-              return resourceUrl;
+            operationUrl: (operation, entity, id) {
+              final putsIdPathSegment = [
+                RepositoryOperation.getById,
+                RepositoryOperation.edit
+              ].contains(operation);
+              return putsIdPathSegment ? '$resourceUrl/$id' : resourceUrl;
             },
             toJson: toJson,
             jsonCodec: jsonCodec,

@@ -11,7 +11,7 @@ class SynchronizationBatchResult {
     return failures.length;
   }
 
-  final List<Failure> failures;
+  final List<RepositoryBaseFailure> failures;
 
   @override
   String toString() {

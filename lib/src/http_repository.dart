@@ -1,7 +1,8 @@
 import 'dart:convert' show JsonCodec;
 
-import 'package:repository/src/http_exception.dart';
-import 'package:repository/src/repository_failure.dart';
+import 'http_exception.dart';
+import 'repository_failure.dart';
+import 'repository_operation.dart';
 
 import 'repository.dart';
 import 'identifiable.dart';
@@ -9,16 +10,16 @@ import 'package:dartz/dartz.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
-/// Implements CRUD for a well defined restful resource.
+/// Flexible json HTTP repository
 ///
+/// Allows conditional parsing based on RepositoryOperation
+/// Can do non restful implementations by providing different url per RepositoryOperation.
 /// Note: an HttpFailure is returned if a response si outside the 200 range.
-/// Resource nesting is not supported. To do this combine on or more RestfulRepository
-/// instances.
 class HttpRepository<Entity>
     implements Repository<Entity>, Edit<Map<String, dynamic>, Entity> {
   final Map<String, dynamic> Function(Entity, RepositoryOperation) toJson;
   final Entity Function(Map<String, dynamic>, RepositoryOperation) fromJson;
-  final String Function(RepositoryOperation, Entity)
+  final String Function(RepositoryOperation, Entity, UniqueId id)
       operationUrl; // Entity might be null for some operations
   final http.Client client;
   final JsonCodec jsonCodec;
@@ -26,9 +27,9 @@ class HttpRepository<Entity>
   static const void unit = null;
 
   String resourceURLForEntity(Entity entity, RepositoryOperation operation,
-      {String id}) {
-    final url = operationUrl(operation, entity);
-    return id != null ? '$url/$id' : url;
+      {UniqueId id}) {
+    final url = operationUrl(operation, entity, id);
+    return url;
   }
 
   HttpRepository({
@@ -40,7 +41,7 @@ class HttpRepository<Entity>
   }) : this.jsonCodec = jsonCodec ?? JsonCodec();
 
   @override
-  Future<Either<Failure, Entity>> add(Entity entity) {
+  Future<Either<RepositoryBaseFailure, Entity>> add(Entity entity) {
     final task = Task(() async {
       final url = resourceURLForEntity(entity, RepositoryOperation.add);
       final jsonMap = toJson(entity, RepositoryOperation.add);
@@ -64,7 +65,7 @@ class HttpRepository<Entity>
   }
 
   @override
-  Future<Either<Failure, void>> delete(Entity entity) {
+  Future<Either<RepositoryBaseFailure, void>> delete(Entity entity) {
     final url = resourceURLForEntity(entity, RepositoryOperation.delete);
     final task = Task(() async {
       final response = await client.delete(url, headers: {'Accept': '*/*'});
@@ -76,7 +77,7 @@ class HttpRepository<Entity>
   }
 
   @override
-  Future<Either<Failure, List<Entity>>> getAll() {
+  Future<Either<RepositoryBaseFailure, List<Entity>>> getAll() {
     final task = Task(() async {
       final url = resourceURLForEntity(null, RepositoryOperation.getAll);
       final response = await client.get(url);
@@ -104,10 +105,10 @@ class HttpRepository<Entity>
   }
 
   @override
-  Future<Either<Failure, Entity>> getById(UniqueId id) {
+  Future<Either<RepositoryBaseFailure, Entity>> getById(UniqueId id) {
     final task = Task(() async {
       final url =
-          resourceURLForEntity(null, RepositoryOperation.getById, id: id.value);
+          resourceURLForEntity(null, RepositoryOperation.getById, id: id);
       final response = await client.get('$url').validate();
       final bodyString = response.body;
       final jsonMap = jsonCodec.decode(bodyString) as Map<String, dynamic>;
@@ -121,7 +122,7 @@ class HttpRepository<Entity>
   }
 
   @override
-  Future<Either<Failure, void>> update(Entity entity) async {
+  Future<Either<RepositoryBaseFailure, void>> update(Entity entity) async {
     final task = Task(() {
       final jsonMap = toJson(entity, RepositoryOperation.update);
       final jsonString = jsonCodec.encode(jsonMap);
@@ -140,14 +141,13 @@ class HttpRepository<Entity>
   }
 
   @override
-  Future<Either<Failure, Entity>> edit(
+  Future<Either<RepositoryBaseFailure, Entity>> edit(
       UniqueId id, Map<String, dynamic> operation) {
     final task = Task(() async {
       final patch = operation;
       patch.removeWhere((key, value) => value == null);
 
-      final url =
-          resourceURLForEntity(null, RepositoryOperation.edit, id: id.value);
+      final url = resourceURLForEntity(null, RepositoryOperation.edit, id: id);
       final jsonString = jsonCodec.encode(patch);
       final response = await client.patch(
         url,
@@ -169,7 +169,7 @@ class HttpRepository<Entity>
     return task.run();
   }
 
-  Failure handleException(Exception error) {
+  RepositoryBaseFailure handleException(Exception error) {
     if (error is HttpException) {
       return HttpFailure.fromException(error);
     }

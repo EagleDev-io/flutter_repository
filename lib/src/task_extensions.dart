@@ -1,8 +1,9 @@
 import 'package:dartz/dartz.dart';
 import './repository_failure.dart';
 
-extension TaskEitherAlternative<T> on Task<Either<Failure, T>> {
-  Task<Either<Failure, T>> orDefault(Task<Either<Failure, T>> task) {
+extension TaskEitherAlternative<T> on Task<Either<RepositoryBaseFailure, T>> {
+  Task<Either<RepositoryBaseFailure, T>> orDefault(
+      Task<Either<RepositoryBaseFailure, T>> task) {
     return bind((eitherT) => Task(() {
           return eitherT.fold(
             (failure) => task.run(),
@@ -12,9 +13,9 @@ extension TaskEitherAlternative<T> on Task<Either<Failure, T>> {
   }
 }
 
-extension TaskEitherMonad<T> on Task<Either<Failure, T>> {
-  Task<Either<Failure, A>> bindEither<A>(
-      Function1<T, Task<Either<Failure, A>>> f) {
+extension TaskEitherMonad<T> on Task<Either<RepositoryBaseFailure, T>> {
+  Task<Either<RepositoryBaseFailure, A>> bindEither<A>(
+      Function1<T, Task<Either<RepositoryBaseFailure, A>>> f) {
     return bind((eitherT) => Task(() {
           return eitherT.fold(
             (failure) => Future.value(Left(failure)),
@@ -23,13 +24,15 @@ extension TaskEitherMonad<T> on Task<Either<Failure, T>> {
         }));
   }
 
-  Task<Either<Failure, A>> mapEither<A>(Function1<T, A> f) {
+  Task<Either<RepositoryBaseFailure, A>> mapEither<A>(Function1<T, A> f) {
     return map((eitherT) => eitherT.map(f));
   }
 }
 
-extension FutureEitherAlternative<T> on Future<Either<Failure, T>> {
-  Future<Either<Failure, T>> orDefault(Future<Either<Failure, T>> task) {
+extension FutureEitherAlternative<T>
+    on Future<Either<RepositoryBaseFailure, T>> {
+  Future<Either<RepositoryBaseFailure, T>> orDefault(
+      Future<Either<RepositoryBaseFailure, T>> task) {
     return then((eitherT) {
       return eitherT.fold(
         (failure) => task,
@@ -39,12 +42,12 @@ extension FutureEitherAlternative<T> on Future<Either<Failure, T>> {
   }
 }
 
-extension EitherDefault<T> on Either<Failure, T> {
+extension EitherDefault<T> on Either<RepositoryBaseFailure, T> {
   T withDefault(T value) {
     return fold((failure) => value, (success) => success);
   }
 
-  Failure failure() {
+  RepositoryBaseFailure failure() {
     return fold((failure) => failure, (success) => null);
   }
 }
