@@ -12,7 +12,7 @@ import './task_extensions.dart';
 /// The source of truth is the remote repository.
 /// Only read operations are allowed offline.
 class RemoteFirstRepository<Entity> implements Repository<Entity> {
-  static Task<Either<Failure, T>> connectivityFailureTask<T>() =>
+  static Task<Either<RepositoryBaseFailure, T>> connectivityFailureTask<T>() =>
       Task(() => Future.value(Left(RepositoryFailure.connectivity())));
 
   final Repository<Entity> remoteRepository;
@@ -30,7 +30,7 @@ class RemoteFirstRepository<Entity> implements Repository<Entity> {
   ///
   /// Fails if remote fails. Caches only when remote succeeds.
   @override
-  Future<Either<Failure, Entity>> add(Entity entity) {
+  Future<Either<RepositoryBaseFailure, Entity>> add(Entity entity) {
     final task =
         Task(() => remoteRepository.add(entity)).bindEither((createdEntity) {
       return Task(() => cacheRepository.add(createdEntity ?? entity));
@@ -47,7 +47,7 @@ class RemoteFirstRepository<Entity> implements Repository<Entity> {
   /// Fails is remote fails.
   /// Deletes from cache only when first deleted from remote
   @override
-  Future<Either<Failure, void>> delete(Entity entity) {
+  Future<Either<RepositoryBaseFailure, void>> delete(Entity entity) {
     final task = Task(() => remoteRepository.delete(entity)).bindEither((_) {
       return Task(() => cacheRepository.delete(entity));
     });
@@ -63,7 +63,7 @@ class RemoteFirstRepository<Entity> implements Repository<Entity> {
   /// If remote succeeds results are cached.
   /// If remote fails fallback to cache result.
   @override
-  Future<Either<Failure, List<Entity>>> getAll() {
+  Future<Either<RepositoryBaseFailure, List<Entity>>> getAll() {
     final cacheTask = Task(() => cacheRepository.getAll());
     final remoteTask = Task(() => remoteRepository.getAll());
 
@@ -88,7 +88,7 @@ class RemoteFirstRepository<Entity> implements Repository<Entity> {
   /// If remote succeeds the entity is cached.
   /// If remote fails fallback to cache result.
   @override
-  Future<Either<Failure, Entity>> getById(UniqueId id) {
+  Future<Either<RepositoryBaseFailure, Entity>> getById(UniqueId id) {
     final cacheTask = Task(() => cacheRepository.getById(id));
     final remoteTask = Task(() => remoteRepository.getById(id));
 
@@ -108,7 +108,7 @@ class RemoteFirstRepository<Entity> implements Repository<Entity> {
   /// Fails on any remote failure
   /// Caches only when remote update succeeds
   @override
-  Future<Either<Failure, void>> update(Entity entity) {
+  Future<Either<RepositoryBaseFailure, void>> update(Entity entity) {
     final task = Task(() => remoteRepository.update(entity)).bindEither((_) {
       return Task(() => cacheRepository.update(entity));
     });
