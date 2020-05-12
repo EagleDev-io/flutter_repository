@@ -29,27 +29,27 @@ class InMemoryRepository<E extends WithId> implements Repository<E> {
   String entityId(E entity) => entity.stringedId;
 
   @override
-  Future<Either<Failure, E>> add(E entity) async {
+  Future<Either<RepositoryBaseFailure, E>> add(E entity) async {
     final id = entityId(entity);
     entitySet[id] = entity;
     return Right(entity);
   }
 
   @override
-  Future<Either<Failure, void>> delete(E entity) async {
+  Future<Either<RepositoryBaseFailure, void>> delete(E entity) async {
     entitySet.removeWhere((key, value) => value == entity);
     return Right(unit);
   }
 
   @override
-  Future<Either<Failure, List<E>>> getAll() async {
+  Future<Either<RepositoryBaseFailure, List<E>>> getAll() async {
     await Future.delayed(delay);
     final list = entitySet.values.toList();
     return Right(list);
   }
 
   @override
-  Future<Either<Failure, E>> getById(UniqueId id) async {
+  Future<Either<RepositoryBaseFailure, E>> getById(UniqueId id) async {
     await Future.delayed(delay);
     final entity = entitySet[id.value];
     if (entity == null)
@@ -58,7 +58,7 @@ class InMemoryRepository<E extends WithId> implements Repository<E> {
   }
 
   @override
-  Future<Either<Failure, void>> update(E entity) async {
+  Future<Either<RepositoryBaseFailure, void>> update(E entity) async {
     final id = entityId(entity);
     entitySet[id] = entity;
     return Right(unit);

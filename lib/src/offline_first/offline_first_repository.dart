@@ -24,7 +24,7 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
   final Repository<Synchronized<Entity>> local;
   final NetworkInfo networkChecker;
 
-  static Task<Either<Failure, T>> connectivityFailureTask<T>() =>
+  static Task<Either<RepositoryBaseFailure, T>> connectivityFailureTask<T>() =>
       Task(() => Future.value(Left(RepositoryFailure.connectivity())));
 
   OfflineFirstRepository({
@@ -40,7 +40,7 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
   }
 
   @override
-  Future<Either<Failure, Entity>> add(Entity entity) {
+  Future<Either<RepositoryBaseFailure, Entity>> add(Entity entity) {
     final localTask = Task(() => local
             .add(entityWithStatus(entity, SynchronizationStatus.needsCreation)))
         .mapEither((entityWrapper) => entityWrapper.entity);
@@ -52,7 +52,7 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
   /// Works by marking the entity for deletion which will later be deleted
   /// with a synchronization batch.
   @override
-  Future<Either<Failure, void>> delete(Entity entity) async {
+  Future<Either<RepositoryBaseFailure, void>> delete(Entity entity) async {
     final markedForDeletion =
         entityWithStatus(entity, SynchronizationStatus.needsDeletion);
     final result = await local.update(markedForDeletion);
@@ -60,7 +60,7 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
   }
 
   @override
-  Future<Either<Failure, List<Entity>>> getAll() async {
+  Future<Either<RepositoryBaseFailure, List<Entity>>> getAll() async {
     final result = await local.getAll();
     final filteredResult = result.map(
       (lst) => lst
@@ -74,14 +74,14 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
   }
 
   @override
-  Future<Either<Failure, Entity>> getById(UniqueId id) {
+  Future<Either<RepositoryBaseFailure, Entity>> getById(UniqueId id) {
     return local
         .getById(id)
         .then((value) => value.map((wrapper) => wrapper.entity));
   }
 
   @override
-  Future<Either<Failure, void>> update(Entity entity) {
+  Future<Either<RepositoryBaseFailure, void>> update(Entity entity) {
     final findEntityTask = Task(() async {
       final result = await local.getById(UniqueId(entity.stringedId));
       return result;
@@ -108,7 +108,8 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
 
   /// Updated or insert entity into local repository
   /// Note: local Repository should fail if entity is null.
-  Future<Either<Failure, void>> upsert(Synchronized<Entity> wrapper) {
+  Future<Either<RepositoryBaseFailure, void>> upsert(
+      Synchronized<Entity> wrapper) {
     final findEntityTask = Task(() async {
       final result = await local.getById(UniqueId(wrapper.stringedId));
       return result;
@@ -132,7 +133,7 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
 
   /// Pull data from remote repository to populate local db
   /// Should update or insert new entities.
-  Future<Either<Failure, void>> hydrate() {
+  Future<Either<RepositoryBaseFailure, void>> hydrate() {
     final remoteTask = Task(() => remote.getAll());
 
     final task = remoteTask.bindEither((list) {
@@ -156,7 +157,7 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
 // ===================== Synchronization =====================
   Future<SynchronizationBatchResult> synchronize() async {
     int processed = 0;
-    final List<Failure> failures = [];
+    final List<RepositoryBaseFailure> failures = [];
     final hasInternetConnection = await networkChecker.isConnected;
 
     if (!hasInternetConnection) {
@@ -167,7 +168,7 @@ class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
         await local.getAll().then((either) => either.withDefault([]));
 
     for (final wrapper in entities) {
-      Either<Failure, dynamic> result;
+      Either<RepositoryBaseFailure, dynamic> result;
       final Entity entity = wrapper.entity;
 
       if (wrapper.status == SynchronizationStatus.needsUpdate) {

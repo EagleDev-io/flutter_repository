@@ -18,7 +18,7 @@ class HiveRepository<Entity extends WithId> implements Repository<Entity> {
   bool get isBoxClosed => !(_hiveBox?.isOpen ?? false);
 
   @override
-  Future<Either<Failure, Entity>> add(Entity entity) async {
+  Future<Either<RepositoryBaseFailure, Entity>> add(Entity entity) async {
     if (isBoxClosed) {
       return null;
     }
@@ -28,19 +28,19 @@ class HiveRepository<Entity extends WithId> implements Repository<Entity> {
   }
 
   @override
-  Future<Either<Failure, void>> delete(Entity entity) async {
+  Future<Either<RepositoryBaseFailure, void>> delete(Entity entity) async {
     await _hiveBox.delete(entity.stringedId);
     return Right(unit);
   }
 
   @override
-  Future<Either<Failure, List<Entity>>> getAll() {
+  Future<Either<RepositoryBaseFailure, List<Entity>>> getAll() {
     final allObjects = _hiveBox.toMap().values.toList();
     return Future.value(Right(allObjects));
   }
 
   @override
-  Future<Either<Failure, Entity>> getById(UniqueId id) {
+  Future<Either<RepositoryBaseFailure, Entity>> getById(UniqueId id) {
     if (isBoxClosed) {
       return null;
     }
@@ -51,13 +51,13 @@ class HiveRepository<Entity extends WithId> implements Repository<Entity> {
   }
 
   @override
-  Future<Either<Failure, void>> update(Entity entity) async {
+  Future<Either<RepositoryBaseFailure, void>> update(Entity entity) async {
     await _hiveBox.put(entity.stringedId, entity);
     return Future.value(Right(unit));
   }
 
   @override
-  Future<Either<Failure, Entity>> edit<O extends Entity>(
+  Future<Either<RepositoryBaseFailure, Entity>> edit<O extends Entity>(
       UniqueId id, O operation) {
     throw UnimplementedError();
   }
