@@ -8,6 +8,8 @@ export 'src/repository.dart';
 export 'src/offline_first/offline_first_repository.dart';
 export 'src/offline_first/synchronization_batch_result.dart';
 export 'src/offline_first/synchronized.dart';
+export 'src/firebase_repository.dart';
+export 'src/http_repository.dart';
 export 'src/identifiable.dart';
 export 'src/hive_adapters.dart';
 export 'src/repository_failure.dart';

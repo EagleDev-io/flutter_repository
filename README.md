@@ -51,6 +51,7 @@ class InMemoryRepository<E extends WithId> implements Repository<E> { ... }
 - RestfulRepository (DRY on boilerplate CRUD implementations)
 - HiveRepository
 - InMemoryRepository 
+- FirebaseRepository
 
 
 ## Custom repositories
