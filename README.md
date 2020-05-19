@@ -1,5 +1,8 @@
 # Repository
 
+![Run unit tests](https://github.com/EagleDev-io/flutter_repository/workflows/Run%20unit%20tests/badge.svg)
+[![codecov](https://codecov.io/gh/EagleDev-io/flutter_repository/branch/master/graph/badge.svg)](https://codecov.io/gh/EagleDev-io/flutter_repository)
+
 A data fetching and persistence abstraction. 
 
 A repository is a generic abstract class that expresses CRUD operations.
