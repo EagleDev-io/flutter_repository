@@ -11,7 +11,7 @@ import './task_extensions.dart';
 ///
 /// The source of truth is the remote repository.
 /// Only read operations are allowed offline.
-class RemoteFirstRepository<Entity> implements Repository<Entity> {
+class RemoteFirstRepository<Entity> extends Repository<Entity> {
   static Task<Either<RepositoryBaseFailure, T>> connectivityFailureTask<T>() =>
       Task(() => Future.value(Left(RepositoryFailure.connectivity())));
 

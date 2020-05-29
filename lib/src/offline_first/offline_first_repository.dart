@@ -19,7 +19,7 @@ import 'synchronized.dart';
 /// Write operations are performed by tagging entities for later synchronization.
 
 class OfflineFirstRepository<Entity extends WithIdAndPrimaryKey>
-    implements Repository<Entity> {
+    extends Repository<Entity> {
   final Repository<Entity> remote;
   final Repository<Synchronized<Entity>> local;
   final NetworkInfo networkChecker;
