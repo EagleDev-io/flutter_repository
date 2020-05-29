@@ -9,7 +9,7 @@ import 'package:meta/meta.dart';
 /// HiveRepository
 ///
 /// Requires a TypeAdapter<Entity> to be registered.
-class HiveRepository<Entity extends WithId> implements Repository<Entity> {
+class HiveRepository<Entity extends WithId> extends Repository<Entity> {
   final Box<Entity> _hiveBox;
   static const void unit = null;
 

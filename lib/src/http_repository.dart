@@ -15,8 +15,8 @@ import 'package:meta/meta.dart';
 /// Allows conditional parsing based on RepositoryOperation
 /// Can do non restful implementations by providing different url per RepositoryOperation.
 /// Note: an HttpFailure is returned if a response si outside the 200 range.
-class HttpRepository<Entity>
-    implements Repository<Entity>, Edit<Map<String, dynamic>, Entity> {
+class HttpRepository<Entity> extends Repository<Entity>
+    implements Edit<Map<String, dynamic>, Entity> {
   final Map<String, dynamic> Function(Entity, RepositoryOperation) toJson;
   final Entity Function(Map<String, dynamic>, RepositoryOperation) fromJson;
   final String Function(RepositoryOperation, Entity, UniqueId id)

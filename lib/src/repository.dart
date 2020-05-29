@@ -53,9 +53,7 @@ abstract class WriteOnlyRepository<EntityType>
     with Add<EntityType>, Delete<EntityType>, Update<EntityType> {}
 
 abstract class Repository<EntityType> extends ReadOnlyRepository<EntityType>
-    implements WriteOnlyRepository<EntityType> {}
-
-extension RepositoryExtensions on Repository {
+    implements WriteOnlyRepository<EntityType> {
   Future<Either<RepositoryBaseFailure, void>> clear() async {
     final result = Task(() => getAll()).bindEither((items) => Task(() async {
           for (final item in items) {
@@ -67,3 +65,16 @@ extension RepositoryExtensions on Repository {
     return result.run();
   }
 }
+
+// extension RepositoryExtensions on Repository {
+//   Future<Either<RepositoryBaseFailure, void>> clear() async {
+//     final result = Task(() => getAll()).bindEither((items) => Task(() async {
+//           for (final item in items) {
+//             await delete(item);
+//           }
+//           return;
+//         }));
+
+//     return result.run();
+//   }
+// }
