@@ -29,7 +29,8 @@ class CacheState {
   }
 
   bool get shouldFetchFresh {
-    final duration = _lastRefreshed.difference(DateTime.now());
+    final duration = _lastRefreshed?.difference(DateTime.now());
+    if (duration == null) return true;
     final satisfiesTimeWindow = duration < _policy.outdatedAfter;
     _isValidCache = satisfiesTimeWindow;
   }
@@ -64,6 +65,13 @@ class CacheRepository<T extends WithId> extends Repository<T> {
 
   @override
   Future<Either<RepositoryBaseFailure, List<T>>> getAll() async {
+    final hasInternet = await networkChecker.isConnected;
+
+    if (!hasInternet) {
+      final cachedResult = await cache.getAll();
+      return cachedResult;
+    }
+
     final shouldFetchFresh = state.shouldFetchFresh;
     if (shouldFetchFresh) {
       final result = await source.getAll();
@@ -82,8 +90,21 @@ class CacheRepository<T extends WithId> extends Repository<T> {
   }
 
   @override
-  Future<Either<RepositoryBaseFailure, T>> getById(UniqueId entity) {
-    throw UnimplementedError();
+  Future<Either<RepositoryBaseFailure, T>> getById(UniqueId id) async {
+    final hasInternetConnection = await networkChecker.isConnected;
+
+    final shouldRefresh = state.shouldFetchFresh;
+    if (shouldRefresh && hasInternetConnection) {
+      final result = await source.getById(id);
+      final entity = result.getOrElse(() => null);
+      if (entity != null) {
+        await _upsertIntoCache(entity);
+      }
+      return result;
+    } else {
+      final cached = await cache.getById(id);
+      return cached;
+    }
   }
 
   @override
@@ -98,4 +119,13 @@ class CacheRepository<T extends WithId> extends Repository<T> {
   /// Clears cache and calls source repository to get fresh resources.
   /// Bypasses caching policy
   Future<Either<RepositoryFailure, bool>> synchronize() {}
+
+  Future<void> _upsertIntoCache(T entity) async {
+    final cached = await cache.getById(UniqueId(entity.stringedId));
+    if (cached.isLeft()) {
+      await cache.add(entity);
+    } else {
+      await cache.update(entity);
+    }
+  }
 }

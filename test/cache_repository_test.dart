@@ -30,7 +30,7 @@ void main() {
   CacheRepository<TodoItem> sut;
   RepositorySpy<TodoItem> cacheSpy;
   CacheStateSpy stateSpy;
-  MockNetworkCheker networkChekerMock;
+  MockNetworkCheker networkCheckerMock;
   MockSourceRepository sourceMock;
   final policy = CachingPolicy();
 
@@ -50,6 +50,7 @@ void main() {
 
   setUp(() {
     sourceMock = MockSourceRepository();
+    networkCheckerMock = MockNetworkCheker();
 
     cacheSpy = RepositorySpy(
         realRepository: InMemoryRepository.blank(),
@@ -64,26 +65,53 @@ void main() {
       state: stateSpy,
       cache: cacheSpy,
       source: sourceMock,
-      networkChecker: networkChekerMock,
+      networkChecker: networkCheckerMock,
     );
   });
 
+  test('checks network status when calling get all', () async {
+    when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
+    when(sourceMock.getAll()).thenAnswer((_) async => Right([]));
+    final result = await sut.getAll();
+    verify(networkCheckerMock.isConnected);
+  });
+
   group('timeout threshold not exceeded', () {
-    test('forwards getAll operation to cache', () async {
+    setUp(() {
+      when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
       when(stateSpy.shouldFetchFresh).thenReturn(false);
+    });
+
+    test('forwards getAll operation to cache', () async {
       final result = await sut.getAll();
       verify(cacheSpy.getAll()).called(1);
       verifyZeroInteractions(sourceMock);
       verify(stateSpy.shouldFetchFresh);
     });
-    test('forwards getById operation to cache', () async {});
+
+    test('forwards getById operation to cache', () async {
+      final tUniqueId = UniqueId('123');
+      final tEntity = TodoItem(id: tUniqueId.value, title: 'test task');
+
+      when(cacheSpy.getById(any)).thenAnswer((_) async => Right(tEntity));
+
+      final result = await sut.getById(tUniqueId);
+
+      expect(result.getOrElse(() => null), tEntity);
+      verify(cacheSpy.getById(tUniqueId)).called(1);
+      verifyNever(sourceMock.getById(any));
+      verify(stateSpy.shouldFetchFresh).called(1);
+    });
   });
 
-  group('Device is online', () {
-    test('calls source getAll when cache is invalidated', () async {
+  group('Device is online and needs fresh data', () {
+    setUp(() {
+      when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
       when(sourceMock.getAll())
           .thenAnswer((_) async => Right(tTodoItemsWithID));
       when(stateSpy.shouldFetchFresh).thenReturn(true);
+    });
+    test('calls source getAll when cache is invalidated', () async {
       final result = await sut.getAll();
       verify(sourceMock.getAll()).called(1);
       verifyNever(cacheSpy.getAll());
@@ -91,9 +119,6 @@ void main() {
     });
 
     test('populates cache when calling source getAll', () async {
-      when(stateSpy.shouldFetchFresh).thenReturn(true);
-      when(sourceMock.getAll())
-          .thenAnswer((_) async => Right(tTodoItemsWithID));
       final result = await sut.entityCount;
       final cacheResult = await cacheSpy.entityCount;
       verify(cacheSpy.add(any)).called(tTodoItemsWithID.length);
@@ -102,9 +127,6 @@ void main() {
     });
 
     test('clears cache before populiting when calling source getAll', () async {
-      when(sourceMock.getAll())
-          .thenAnswer((_) async => Right(tTodoItemsWithID));
-      when(stateSpy.shouldFetchFresh).thenReturn(true);
       await cacheSpy.add(TodoItem(id: 'asdasd', title: 'Test task'));
       final cacheCountBefore = await cacheSpy.entityCount;
       final result = await sut.entityCount;
@@ -113,29 +135,68 @@ void main() {
 
     test('Set date of syncronization on state after calling source get all',
         () async {
-      when(stateSpy.shouldFetchFresh).thenReturn(true);
-      when(sourceMock.getAll())
-          .thenAnswer((_) async => Right(tTodoItemsWithID));
-      when(sourceMock.getAll());
+      when(sourceMock.getAll()).thenAnswer((_) async => Right([]));
       await sut.getAll();
       verify(stateSpy.setLastRefresh(any));
     });
 
-    group('timeout threshold exceeded', () {
-      test('forwards getAll operation to source clears and updates cache',
-          () async {});
-      test('forwards getById operation to source and upserts cache',
-          () async {});
+    test(
+        'forwards getById operation to source and inserts when element not in cache',
+        () async {
+      final tId = UniqueId('123');
+      when(sourceMock.getById(any)).thenAnswer(
+          (_) async => Right(TodoItem(id: '123', title: 'Test task')));
+      final result = await sut.getById(tId);
+      final entityOrNull = result.getOrElse(() => null);
+
+      expect(entityOrNull, isNotNull);
+      verify(cacheSpy.add(entityOrNull));
+    });
+
+    test(
+        'forwards getById operation to source and updates when element in cache',
+        () async {
+      final tId = UniqueId('123');
+      final tEntity = TodoItem(id: '123', title: 'Test task');
+      when(sourceMock.getById(any)).thenAnswer((_) async => Right(tEntity));
+
+      await cacheSpy.add(tEntity);
+      final result = await sut.getById(tId);
+
+      final entityOrNull = result.getOrElse(() => null);
+
+      expect(entityOrNull, isNotNull);
+      verify(cacheSpy.update(entityOrNull));
     });
   });
 
   group('Device is offline', () {
-    group('timeout threshold exceeded', () {
-      test('fails and clears cache if configuration is so', () async {});
+    setUp(() {
+      when(networkCheckerMock.isConnected).thenAnswer((_) async => false);
+      when(sourceMock.getAll()).thenAnswer((_) async => Right([]));
+    });
 
-      test('uses cached results if configuration is so', () async {});
+    test('getAll forward call to cache when expired cache valid time window',
+        () async {
+      when(stateSpy.shouldFetchFresh).thenReturn(true);
+      final result = await sut.getAll();
+      verify(cacheSpy.getAll());
+      verifyNever(sourceMock.getAll());
+    });
 
-      test('when using cached results doesnt reset timeout interval', () {});
+    test('getById forward call to cache even if expired cache', () async {
+      when(stateSpy.shouldFetchFresh).thenReturn(true);
+      final tUniqueId = UniqueId('123');
+      final result = await sut.getById(tUniqueId);
+      verify(cacheSpy.getById(tUniqueId));
+      verifyNever(sourceMock.getById(any));
+    });
+
+    test('when using cached results doesnt reset timeout interval', () async {
+      when(stateSpy.shouldFetchFresh).thenReturn(true);
+      final result = await sut.getAll();
+      verify(cacheSpy.getAll());
+      verifyNever(stateSpy.setLastRefresh(any));
     });
   });
 }
