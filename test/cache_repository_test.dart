@@ -76,6 +76,19 @@ void main() {
     verify(networkCheckerMock.isConnected);
   });
 
+  test(
+      'synchronize calls source.getAll -> clears cache and add all new items into cache',
+      () async {
+    when(sourceMock.getAll()).thenAnswer((_) async => Right(tTodoItemsWithID));
+
+    final result = await sut.synchronize();
+
+    verify(cacheSpy.clear()).called(1);
+    verify(sourceMock.getAll()).called(1);
+    verify(cacheSpy.add(any)).called(tTodoItemsWithID.length);
+    expect(result, Right(tTodoItemsWithID.length));
+  });
+
   group('timeout threshold not exceeded', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
@@ -170,11 +183,91 @@ void main() {
     });
   });
 
+  group('Write operations', () {
+    setUp(() {
+      when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
+      when(sourceMock.delete(any)).thenAnswer((_) async => Right(null));
+      when(stateSpy.shouldFetchFresh).thenReturn(false);
+    });
+
+    test('add calls source.add and pipes result to cache.add', () async {
+      final tEntity = TodoItem.newItem('test task');
+      final tEntityNew = tEntity.copyWith(id: '999');
+
+      when(sourceMock.add(any)).thenAnswer((_) async => Right(tEntityNew));
+      final result = await sut.add(tEntity);
+
+      verify(sourceMock.add(tEntity)).called(1);
+      verifyNever(stateSpy.shouldFetchFresh);
+      verify(cacheSpy.add(tEntityNew));
+      expect(result, Right(tEntityNew));
+    });
+
+    test('delete calls source.delete followed by cache.delete', () async {
+      final tEntity = TodoItem(title: 'test task', id: '987');
+
+      final result = await sut.delete(tEntity);
+      verify(sourceMock.delete(tEntity)).called(1);
+      verify(cacheSpy.delete(tEntity)).called(1);
+      verifyNever(stateSpy.shouldFetchFresh);
+      assert(result.isRight());
+    });
+
+    test('update calls source.update followed by cache.update', () async {
+      final tEntity = TodoItem(title: 'test task', id: '987');
+      when(sourceMock.update(any)).thenAnswer((_) async => Right(null));
+
+      final result = await sut.update(tEntity);
+      verify(sourceMock.update(tEntity)).called(1);
+      verify(cacheSpy.update(tEntity)).called(1);
+      verifyNever(stateSpy.shouldFetchFresh);
+      assert(result.isRight());
+    });
+  });
+  group('Offline Write operations', () {
+    setUp(() {
+      when(networkCheckerMock.isConnected).thenAnswer((_) async => false);
+      when(stateSpy.shouldFetchFresh).thenReturn(false);
+    });
+    test('add returns connection failure', () async {
+      final tEntity = TodoItem.newItem('test task');
+      final result = await sut.add(tEntity);
+      verifyNever(sourceMock.add(any));
+      verifyNever(cacheSpy.add(any));
+      verify(networkCheckerMock.isConnected).called(1);
+      expect(result, Left(RepositoryFailure.connectivity()));
+    });
+
+    test('update returns connection failure', () async {
+      final tUniqueId = UniqueId('123');
+      final tEntity = TodoItem(id: tUniqueId.value, title: 'test task');
+
+      final result = await sut.update(tEntity);
+      verifyNever(sourceMock.update(any));
+      verifyNever(cacheSpy.update(any));
+      verify(networkCheckerMock.isConnected).called(1);
+      expect(result, Left(RepositoryFailure.connectivity()));
+    });
+
+    test('delete returns connection failure', () async {
+      final tUniqueId = UniqueId('123');
+      final tEntity = TodoItem(id: tUniqueId.value, title: 'test task');
+      final result = await sut.delete(tEntity);
+      verifyNever(sourceMock.delete(any));
+      verifyNever(cacheSpy.delete(any));
+      verify(networkCheckerMock.isConnected).called(1);
+      expect(result, Left(RepositoryFailure.connectivity()));
+    });
+  });
+
   group('Device is offline', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => false);
       when(sourceMock.getAll()).thenAnswer((_) async => Right([]));
     });
+
+    test('Returns connection failure if no internet and cache not hydrated',
+        () {});
 
     test('getAll forward call to cache when expired cache valid time window',
         () async {
