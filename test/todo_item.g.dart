@@ -11,7 +11,7 @@ _$_TodoItem _$_$_TodoItemFromJson(Map<String, dynamic> json) {
     id: json['id'] as String,
     title: json['title'] as String,
     order: json['order'] as int,
-    completed: json['completed'] as bool,
+    completed: json['completed'] as bool ?? false,
   );
 }
 
