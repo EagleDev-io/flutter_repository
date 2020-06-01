@@ -54,13 +54,26 @@ class CacheRepository<T extends WithId> extends Repository<T> {
   }
 
   @override
-  Future<Either<RepositoryBaseFailure, T>> add(T entity) {
-    throw UnimplementedError();
+  Future<Either<RepositoryBaseFailure, T>> add(T entity) async {
+    final hasInternet = await networkChecker.isConnected;
+    if (!hasInternet) return Left(RepositoryFailure.connectivity());
+    final result = await source.add(entity);
+    final entityOrNull = result.getOrElse(() => null);
+
+    if (entityOrNull != null) {
+      await cache.add(entityOrNull);
+    }
+    return result;
   }
 
   @override
-  Future<Either<RepositoryBaseFailure, void>> delete(T entity) {
-    throw UnimplementedError();
+  Future<Either<RepositoryBaseFailure, void>> delete(T entity) async {
+    final hasInternet = await networkChecker.isConnected;
+    if (!hasInternet) return Left(RepositoryFailure.connectivity());
+
+    final result = await source.delete(entity);
+    await cache.delete(entity);
+    return result;
   }
 
   @override
@@ -108,9 +121,12 @@ class CacheRepository<T extends WithId> extends Repository<T> {
   }
 
   @override
-  Future<Either<RepositoryBaseFailure, void>> update(T entity) {
-    // TODO: implement update
-    throw UnimplementedError();
+  Future<Either<RepositoryBaseFailure, void>> update(T entity) async {
+    final hasInternet = await networkChecker.isConnected;
+    if (!hasInternet) return Left(RepositoryFailure.connectivity());
+    final result = await source.update(entity);
+    final cacheResult = await cache.update(entity);
+    return result;
   }
 
   /// Marks cache outdated so, next call to getAll will be on source repository.
@@ -118,7 +134,22 @@ class CacheRepository<T extends WithId> extends Repository<T> {
 
   /// Clears cache and calls source repository to get fresh resources.
   /// Bypasses caching policy
-  Future<Either<RepositoryFailure, bool>> synchronize() {}
+  Future<Either<RepositoryBaseFailure, int>> synchronize() async {
+    int syncCount = 0;
+
+    final result = await source.getAll();
+    if (result.isLeft()) return result.map((r) => r.length);
+
+    final List<T> entities = result.fold((l) => [], (r) => r);
+    await cache.clear();
+
+    for (var element in entities) {
+      final result = await cache.add(element);
+      syncCount += result.isRight() ? 1 : 0;
+    }
+
+    return result.map((r) => syncCount);
+  }
 
   Future<void> _upsertIntoCache(T entity) async {
     final cached = await cache.getById(UniqueId(entity.stringedId));
