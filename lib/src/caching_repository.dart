@@ -20,37 +20,50 @@ class CacheState {
   bool _isValidCache = false;
   final CachingPolicy _policy;
 
-  CacheState(this._policy);
+  CacheState({@required CachingPolicy policy}) : this._policy = policy;
 
   set lastRefresh(DateTime dateTime) => this.setLastRefresh(dateTime);
 
+  bool get isValidCache => _isValidCache;
+
+  void invalidate() {
+    _isValidCache = false;
+  }
+
   void setLastRefresh(DateTime dateTime) {
+    _isValidCache =
+        _lastRefreshed != null ? dateTime.isAfter(_lastRefreshed) : true;
     _lastRefreshed = dateTime;
   }
 
   bool get shouldFetchFresh {
-    final duration = _lastRefreshed?.difference(DateTime.now());
+    if (!_isValidCache) return !_isValidCache;
+
+    final duration = _lastRefreshed?.difference(DateTime.now()).abs();
     if (duration == null) return true;
     final satisfiesTimeWindow = duration < _policy.outdatedAfter;
-    _isValidCache = satisfiesTimeWindow;
+
+    final shouldRefresh = !satisfiesTimeWindow || !_isValidCache;
+
+    return shouldRefresh;
   }
 }
 
-class CacheRepository<T extends WithId> extends Repository<T> {
+class CachingRepository<T extends WithId> extends Repository<T> {
   final NetworkInfo networkChecker;
   final CachingPolicy policy;
   CacheState state;
   final Repository<T> cache;
   final Repository<T> source;
 
-  CacheRepository({
+  CachingRepository({
     @required this.policy,
     @required this.cache,
     @required this.source,
     @required this.networkChecker,
     this.state,
   }) {
-    state ??= CacheState(policy);
+    state ??= CacheState(policy: policy);
   }
 
   @override
@@ -80,13 +93,8 @@ class CacheRepository<T extends WithId> extends Repository<T> {
   Future<Either<RepositoryBaseFailure, List<T>>> getAll() async {
     final hasInternet = await networkChecker.isConnected;
 
-    if (!hasInternet) {
-      final cachedResult = await cache.getAll();
-      return cachedResult;
-    }
-
     final shouldFetchFresh = state.shouldFetchFresh;
-    if (shouldFetchFresh) {
+    if (shouldFetchFresh && hasInternet) {
       final result = await source.getAll();
       await cache.clear();
       final entities = result.getOrElse(() => []);
@@ -130,7 +138,9 @@ class CacheRepository<T extends WithId> extends Repository<T> {
   }
 
   /// Marks cache outdated so, next call to getAll will be on source repository.
-  void invalidateCache() {}
+  void invalidateCache() {
+    state.invalidate();
+  }
 
   /// Clears cache and calls source repository to get fresh resources.
   /// Bypasses caching policy
