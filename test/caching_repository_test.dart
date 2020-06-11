@@ -2,7 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:repository/repository.dart';
-import 'package:repository/src/cache_repository.dart';
+import 'package:repository/src/caching_repository.dart';
 
 import 'spies/repository_spy.dart';
 import 'todo_item.dart';
@@ -27,7 +27,7 @@ class CacheStateSpy extends Mock implements CacheState {
 }
 
 void main() {
-  CacheRepository<TodoItem> sut;
+  CachingRepository<TodoItem> sut;
   RepositorySpy<TodoItem> cacheSpy;
   CacheStateSpy stateSpy;
   MockNetworkCheker networkCheckerMock;
@@ -58,9 +58,9 @@ void main() {
           repository = InMemoryRepository.blank();
         });
 
-    stateSpy = CacheStateSpy(CacheState(policy));
+    stateSpy = CacheStateSpy(CacheState(policy: policy));
 
-    sut = CacheRepository(
+    sut = CachingRepository(
       policy: null,
       state: stateSpy,
       cache: cacheSpy,
@@ -89,6 +89,7 @@ void main() {
     expect(result, Right(tTodoItemsWithID.length));
   });
 
+  // =============== Time threhold not exceeded =============== //
   group('timeout threshold not exceeded', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
@@ -117,6 +118,7 @@ void main() {
     });
   });
 
+  // =============== Device online and need fresh data =============== //
   group('Device is online and needs fresh data', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
@@ -183,7 +185,8 @@ void main() {
     });
   });
 
-  group('Write operations', () {
+  // =============== Write operations =============== //
+  group('Device is online Write operations ', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
       when(sourceMock.delete(any)).thenAnswer((_) async => Right(null));
@@ -224,6 +227,7 @@ void main() {
       assert(result.isRight());
     });
   });
+  // =============== Offline Write operations =============== //
   group('Offline Write operations', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => false);
@@ -260,7 +264,8 @@ void main() {
     });
   });
 
-  group('Device is offline', () {
+  // =============== Device is offline read operations  =============== //
+  group('Device is offline read operations', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => false);
       when(sourceMock.getAll()).thenAnswer((_) async => Right([]));
