@@ -9,7 +9,7 @@ typedef Endo<T> = void Function(T);
 class InMemoryRepository<E extends WithId> implements Repository<E> {
   static const void unit = null;
 
-  final Map<String, E> entitySet;
+  Map<String, E> _entitySet;
 
   final Duration delay;
 
@@ -23,7 +23,7 @@ class InMemoryRepository<E extends WithId> implements Repository<E> {
     return InMemoryRepository<E>._({}, delay);
   }
 
-  InMemoryRepository._(this.entitySet, Duration delay)
+  InMemoryRepository._(this._entitySet, Duration delay)
       : this.delay = delay ?? const Duration(seconds: 0);
 
   String entityId(E entity) => entity.stringedId;
@@ -31,27 +31,27 @@ class InMemoryRepository<E extends WithId> implements Repository<E> {
   @override
   Future<Either<RepositoryBaseFailure, E>> add(E entity) async {
     final id = entityId(entity);
-    entitySet[id] = entity;
+    _entitySet[id] = entity;
     return Right(entity);
   }
 
   @override
   Future<Either<RepositoryBaseFailure, void>> delete(E entity) async {
-    entitySet.removeWhere((key, value) => value == entity);
+    _entitySet.removeWhere((key, value) => value == entity);
     return Right(unit);
   }
 
   @override
   Future<Either<RepositoryBaseFailure, List<E>>> getAll() async {
     await Future.delayed(delay);
-    final list = entitySet.values.toList();
+    final list = _entitySet.values.toList();
     return Right(list);
   }
 
   @override
   Future<Either<RepositoryBaseFailure, E>> getById(UniqueId id) async {
     await Future.delayed(delay);
-    final entity = entitySet[id.value];
+    final entity = _entitySet[id.value];
     if (entity == null)
       return Left(RepositoryFailure.cache('Entity not found'));
     return Right(entity);
@@ -60,8 +60,14 @@ class InMemoryRepository<E extends WithId> implements Repository<E> {
   @override
   Future<Either<RepositoryBaseFailure, void>> update(E entity) async {
     final id = entityId(entity);
-    entitySet[id] = entity;
+    _entitySet[id] = entity;
     return Right(unit);
+  }
+
+  @override
+  Future<Either<RepositoryBaseFailure, void>> clear() async {
+    _entitySet = {};
+    return null;
   }
 
   // @override

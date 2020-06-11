@@ -17,7 +17,7 @@ abstract class TodoItem
     @JsonKey(ignore: true) String primaryKey,
     String title,
     int order,
-    bool completed,
+    @Default(false) bool completed,
   }) = _TodoItem;
 
   factory TodoItem.fromJson(Map<String, dynamic> json) =>

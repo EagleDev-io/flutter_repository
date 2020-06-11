@@ -13,6 +13,9 @@ abstract class Add<EntityType> {
 }
 
 abstract class GetAll<EntityType> {
+  /// Returns a list of all entities in repository
+  ///
+  /// Will return empty array if no entities found.
   Future<Either<RepositoryBaseFailure, List<EntityType>>> getAll();
 }
 
@@ -22,13 +25,15 @@ abstract class Delete<EntityType> {
 }
 
 abstract class GetById<EntityType> {
-  /// Returns the object with the given a unique id, or null if not present.
+  /// Returns the object with the given a unique id
+  ///
+  /// Will return a Failure if no corresponding entity for id is found.
   Future<Either<RepositoryBaseFailure, EntityType>> getById(UniqueId id);
 }
 
 abstract class Update<EntityType> {
-  /// Replaces an entity present in the repository
-  /// by the provided one.
+  /// Replaces an entity present in the repository by the provided one.
+  ///
   /// Note: Concrete implementation will more likely constraints
   /// EntityType to be have an Id or be equatable.
   Future<Either<RepositoryBaseFailure, void>> update(EntityType entity);
@@ -46,6 +51,9 @@ abstract class Edit<Operation, EntityType> {
       UniqueId id, Operation operation);
 }
 
+/// A repository with only with the subset of opertions related to reading
+///
+/// Operations: GetAll and GetById
 abstract class ReadOnlyRepository<EntityType>
     with GetAll<EntityType>, GetById<EntityType> {}
 
@@ -53,9 +61,7 @@ abstract class WriteOnlyRepository<EntityType>
     with Add<EntityType>, Delete<EntityType>, Update<EntityType> {}
 
 abstract class Repository<EntityType> extends ReadOnlyRepository<EntityType>
-    implements WriteOnlyRepository<EntityType> {}
-
-extension RepositoryExtensions on Repository {
+    implements WriteOnlyRepository<EntityType> {
   Future<Either<RepositoryBaseFailure, void>> clear() async {
     final result = Task(() => getAll()).bindEither((items) => Task(() async {
           for (final item in items) {
