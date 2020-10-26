@@ -13,4 +13,7 @@ export 'src/http_repository.dart';
 export 'src/identifiable.dart';
 export 'src/hive_adapters.dart';
 export 'src/repository_failure.dart';
-export 'src/caching_repository.dart';
+export 'src/caching_repository/caching_repository.dart';
+export 'src/caching_repository/caching_policy.dart';
+export 'src/caching_repository/cache_state.dart';
+export 'src/caching_repository/cache_manager.dart';

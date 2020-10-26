@@ -21,7 +21,7 @@ class FirebaseRepositoryConfiguration {
 class FirebaseRepository<Entity extends WithId>
     implements ReadOnlyRepository<Entity>, WriteOnlyRepository<Entity> {
   final FirebaseRepositoryConfiguration configuration;
-  final Firestore firestore;
+  final FirebaseFirestore firestore;
   final Map<String, dynamic> Function(Entity, RepositoryOperation) toJson;
   final FutureOr<Entity> Function(DocumentReference, RepositoryOperation)
       fromFirestoreDocument;
@@ -46,13 +46,13 @@ class FirebaseRepository<Entity extends WithId>
             configuration.orderedBy,
             descending: !configuration.orderedAscending,
           )
-          .getDocuments();
+          .get();
     } else {
-      snapshots = _collection.getDocuments();
+      snapshots = _collection.get();
     }
 
     final entities = await snapshots.then((snapshot) {
-      return snapshot.documents
+      return snapshot.docs
           .map((e) async =>
               fromFirestoreDocument(e.reference, RepositoryOperation.getAll))
           .toList();
@@ -67,7 +67,7 @@ class FirebaseRepository<Entity extends WithId>
   Future<Either<RepositoryBaseFailure, Entity>> getById(UniqueId id) async {
     final document = await firestore
         .collection(configuration.collectionName)
-        .document(id.value)
+        .doc(id.value)
         .get();
     final entity =
         fromFirestoreDocument(document.reference, RepositoryOperation.getById);
@@ -96,7 +96,7 @@ class FirebaseRepository<Entity extends WithId>
   Future<Either<RepositoryBaseFailure, void>> delete(Entity entity) async {
     await firestore
         .collection(configuration.collectionName)
-        .document(entity.id)
+        .doc(entity.id)
         .delete();
     return Right(null);
   }
@@ -105,8 +105,8 @@ class FirebaseRepository<Entity extends WithId>
   Future<Either<RepositoryBaseFailure, void>> update(Entity entity) async {
     await firestore
         .collection(configuration.collectionName)
-        .document(entity.id)
-        .updateData(toJson(entity, RepositoryOperation.update));
+        .doc(entity.id)
+        .update(toJson(entity, RepositoryOperation.update));
     return Right(null);
   }
 }

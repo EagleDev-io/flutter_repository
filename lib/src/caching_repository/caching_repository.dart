@@ -1,58 +1,13 @@
 import 'package:dartz/dartz.dart';
-import '../repository.dart';
+import '../../repository.dart';
 import 'package:meta/meta.dart';
 
-class CachingPolicy {
-  /// Time condition to determine if data is fresh
-  final Duration outdatedAfter;
-
-  /// Determines if data will be fetched on next repository interaction or immediatly
-  final bool eagerSynchronization;
-
-  CachingPolicy({
-    @required this.outdatedAfter,
-    @required this.eagerSynchronization,
-  });
-}
-
-class CacheState {
-  DateTime _lastRefreshed; // Date of last refresh
-  bool _isValidCache = false;
-  final CachingPolicy _policy;
-
-  CacheState({@required CachingPolicy policy}) : this._policy = policy;
-
-  set lastRefresh(DateTime dateTime) => this.setLastRefresh(dateTime);
-
-  bool get isValidCache => _isValidCache;
-
-  void invalidate() {
-    _isValidCache = false;
-  }
-
-  void setLastRefresh(DateTime dateTime) {
-    _isValidCache =
-        _lastRefreshed != null ? dateTime.isAfter(_lastRefreshed) : true;
-    _lastRefreshed = dateTime;
-  }
-
-  bool get shouldFetchFresh {
-    if (!_isValidCache) return !_isValidCache;
-
-    final duration = _lastRefreshed?.difference(DateTime.now()).abs();
-    if (duration == null) return true;
-    final satisfiesTimeWindow = duration < _policy.outdatedAfter;
-
-    final shouldRefresh = !satisfiesTimeWindow || !_isValidCache;
-
-    return shouldRefresh;
-  }
-}
+// Should be a private class but kept public for testing purposes
 
 class CachingRepository<T extends WithId> extends Repository<T> {
   final NetworkInfo networkChecker;
   final CachingPolicy policy;
-  CacheState state;
+  CachingManager manager = CachingManager();
   final Repository<T> cache;
   final Repository<T> source;
 
@@ -61,9 +16,8 @@ class CachingRepository<T extends WithId> extends Repository<T> {
     @required this.cache,
     @required this.source,
     @required this.networkChecker,
-    this.state,
   }) {
-    state ??= CacheState(policy: policy);
+    manager.policy = policy;
   }
 
   @override
@@ -93,12 +47,12 @@ class CachingRepository<T extends WithId> extends Repository<T> {
   Future<Either<RepositoryBaseFailure, List<T>>> getAll() async {
     final hasInternet = await networkChecker.isConnected;
 
-    final shouldFetchFresh = state.shouldFetchFresh;
+    final shouldFetchFresh = manager.shouldFetchFresh;
     if (shouldFetchFresh && hasInternet) {
       final result = await source.getAll();
       await cache.clear();
       final entities = result.getOrElse(() => []);
-      state.setLastRefresh(DateTime.now());
+      manager.markRefreshDate(DateTime.now());
       entities.forEach((element) async {
         await cache.add(element);
       });
@@ -114,7 +68,7 @@ class CachingRepository<T extends WithId> extends Repository<T> {
   Future<Either<RepositoryBaseFailure, T>> getById(UniqueId id) async {
     final hasInternetConnection = await networkChecker.isConnected;
 
-    final shouldRefresh = state.shouldFetchFresh;
+    final shouldRefresh = manager.shouldFetchFresh;
     if (shouldRefresh && hasInternetConnection) {
       final result = await source.getById(id);
       final entity = result.getOrElse(() => null);
@@ -139,7 +93,7 @@ class CachingRepository<T extends WithId> extends Repository<T> {
 
   /// Marks cache outdated so, next call to getAll will be on source repository.
   void invalidateCache() {
-    state.invalidate();
+    manager.invalidate();
   }
 
   /// Clears cache and calls source repository to get fresh resources.
