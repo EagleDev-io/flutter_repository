@@ -38,7 +38,10 @@ void main() {
   CachingRespositoryStateManagerSpy managerSpy;
   MockNetworkCheker networkCheckerMock;
   MockSourceRepository sourceMock;
-  final policy = TimedCachingPolicy(outdatedAfter: Duration(minutes: 3));
+  final policy = CachingPolicy.combine([
+    TimedCachingPolicy(outdatedAfter: Duration(minutes: 3)),
+    NetworkStatusCachingPolicy()
+  ]);
 
   // Constants
   final tTodoItem = TodoItem.newItem('test task');
@@ -285,16 +288,14 @@ void main() {
     test('Returns connection failure if no internet and cache not hydrated',
         () {});
 
-    test('getAll forward call to cache when expired cache valid time window',
+    test('getAll forward call to cache when expired valid time window',
         () async {
-      when(managerSpy.shouldFetchFresh).thenReturn(true);
       final result = await sut.getAll();
       verify(cacheSpy.getAll());
       verifyNever(sourceMock.getAll());
     });
 
     test('getById forward call to cache even if expired cache', () async {
-      when(managerSpy.shouldFetchFresh).thenReturn(true);
       final tUniqueId = UniqueId('123');
       final result = await sut.getById(tUniqueId);
       verify(cacheSpy.getById(tUniqueId));
@@ -302,10 +303,31 @@ void main() {
     });
 
     test('doesnt reset timeout interval when using cached results', () async {
-      when(managerSpy.shouldFetchFresh).thenReturn(true);
       final result = await sut.getAll();
       verify(cacheSpy.getAll());
       verifyNever(managerSpy.markRefreshDate(any));
     });
   });
+
+  // =============== CacheManager  =============== //
+  test('asks manager if should read from cache whenever getAll is called',
+      () async {
+    final result = await sut.getAll();
+    verify(managerSpy.shouldFetchFresh);
+  });
+
+  test('asks manager if should read from cache whenever getbyId is called',
+      () async {
+    final tUniqueId = UniqueId('123');
+    final result = await sut.getById(tUniqueId);
+    verify(managerSpy.shouldFetchFresh);
+  });
+
+  test('Updates manager with connectivity state whenever calling getAll',
+      () async {
+    final result = await sut.getAll();
+    verify(managerSpy.setHasInternetConnection(any));
+  });
+
+  test('Asks manager if should write to cache', () {});
 }

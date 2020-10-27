@@ -11,6 +11,7 @@ class CacheState {
   // Getters
   DateTime get previousRefresh => _previousRefresh;
   DateTime get mostRecentRefresh => _mostRecentRefresh;
+  bool get hasInternet => _hasInternetConnection;
 
   // Setters
   void markRefreshDate(DateTime dateTime) {

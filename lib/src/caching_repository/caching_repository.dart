@@ -17,12 +17,19 @@ class CachingRepository<T extends WithId> extends Repository<T> {
     @required this.source,
     @required this.networkChecker,
   }) {
-    manager.policy = policy;
+    manager.policy =
+        CachingPolicy.combine([policy, NetworkStatusCachingPolicy()]);
+  }
+
+  Future<bool> get _isConnected async {
+    final hasInternet = await networkChecker.isConnected;
+    manager.setHasInternetConnection(hasInternet);
+    return hasInternet;
   }
 
   @override
   Future<Either<RepositoryBaseFailure, T>> add(T entity) async {
-    final hasInternet = await networkChecker.isConnected;
+    final hasInternet = await _isConnected;
     if (!hasInternet) return Left(RepositoryFailure.connectivity());
     final result = await source.add(entity);
     final entityOrNull = result.getOrElse(() => null);
@@ -35,7 +42,7 @@ class CachingRepository<T extends WithId> extends Repository<T> {
 
   @override
   Future<Either<RepositoryBaseFailure, void>> delete(T entity) async {
-    final hasInternet = await networkChecker.isConnected;
+    final hasInternet = await _isConnected;
     if (!hasInternet) return Left(RepositoryFailure.connectivity());
 
     final result = await source.delete(entity);
@@ -45,10 +52,10 @@ class CachingRepository<T extends WithId> extends Repository<T> {
 
   @override
   Future<Either<RepositoryBaseFailure, List<T>>> getAll() async {
-    final hasInternet = await networkChecker.isConnected;
+    final hasInternet = await _isConnected;
 
     final shouldFetchFresh = manager.shouldFetchFresh;
-    if (shouldFetchFresh && hasInternet) {
+    if (shouldFetchFresh) {
       final result = await source.getAll();
       await cache.clear();
       final entities = result.getOrElse(() => []);
@@ -66,10 +73,10 @@ class CachingRepository<T extends WithId> extends Repository<T> {
 
   @override
   Future<Either<RepositoryBaseFailure, T>> getById(UniqueId id) async {
-    final hasInternetConnection = await networkChecker.isConnected;
+    final hasInternetConnection = await _isConnected;
 
     final shouldRefresh = manager.shouldFetchFresh;
-    if (shouldRefresh && hasInternetConnection) {
+    if (shouldRefresh) {
       final result = await source.getById(id);
       final entity = result.getOrElse(() => null);
       if (entity != null) {
@@ -84,7 +91,7 @@ class CachingRepository<T extends WithId> extends Repository<T> {
 
   @override
   Future<Either<RepositoryBaseFailure, void>> update(T entity) async {
-    final hasInternet = await networkChecker.isConnected;
+    final hasInternet = await _isConnected;
     if (!hasInternet) return Left(RepositoryFailure.connectivity());
     final result = await source.update(entity);
     final cacheResult = await cache.update(entity);

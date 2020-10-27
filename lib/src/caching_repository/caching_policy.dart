@@ -3,6 +3,26 @@ import 'package:repository/src/caching_repository/cache_state.dart';
 
 abstract class CachingPolicy {
   bool shouldInvalidateCache(CacheState state);
+
+  static CachingPolicy combine(List<CachingPolicy> policies) {
+    final combinedPolicy = policies
+        .reduce((accum, policy) => _CombinedCachingPolicy(accum, policy));
+    return combinedPolicy;
+  }
+}
+
+class _CombinedCachingPolicy implements CachingPolicy {
+  final CachingPolicy first;
+  final CachingPolicy second;
+
+  _CombinedCachingPolicy(this.first, this.second);
+
+  @override
+  bool shouldInvalidateCache(CacheState state) {
+    final result = first.shouldInvalidateCache(state) ||
+        second.shouldInvalidateCache(state);
+    return result;
+  }
 }
 
 class TimedCachingPolicy extends CachingPolicy {
@@ -31,6 +51,8 @@ class TimedCachingPolicy extends CachingPolicy {
 class NetworkStatusCachingPolicy extends CachingPolicy {
   @override
   bool shouldInvalidateCache(CacheState state) {
-    return false;
+    // Always read from cache if no internet connection
+    if (!state.hasInternet) return false;
+    return true;
   }
 }
