@@ -1,7 +1,6 @@
 import 'package:mockito/mockito.dart';
 import 'package:meta/meta.dart';
-import 'package:repository/src/identifiable.dart';
-import 'package:repository/src/repository.dart';
+import 'package:repository/repository.dart';
 
 class RepositorySpy<Entity> extends Mock implements Repository<Entity> {
   Repository<Entity> realRepository;

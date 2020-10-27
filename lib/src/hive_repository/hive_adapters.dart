@@ -4,8 +4,8 @@ import 'package:dartz/dartz.dart';
 import 'package:hive/hive.dart';
 import 'package:meta/meta.dart';
 
-import '../repository.dart';
-import 'offline_first/synchronized.dart';
+import '../../repository.dart';
+import '../synchronized.dart';
 
 class HiveJsonTypeAdapter<T> extends TypeAdapter<T> {
   final int typeIdentifier;

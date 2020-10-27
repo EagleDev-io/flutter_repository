@@ -1,10 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dartz/dartz.dart';
 import 'package:meta/meta.dart';
-import 'package:repository/src/repository_operation.dart';
+import './base/repository_failure.dart';
+import './base/repository_operation.dart';
+import './base/repository.dart';
+
 import 'dart:async';
 
-import '../repository.dart';
+import 'identifiable.dart';
 
 class FirebaseRepositoryConfiguration {
   final String collectionName;

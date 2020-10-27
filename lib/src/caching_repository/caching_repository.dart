@@ -1,6 +1,12 @@
 import 'package:dartz/dartz.dart';
-import '../../repository.dart';
+import '../base/repository_failure.dart';
+import '../base/repository.dart';
 import 'package:meta/meta.dart';
+
+import '../identifiable.dart';
+import '../network_info.dart';
+import 'cache_manager.dart';
+import 'caching_policy.dart';
 
 // Should be a private class but kept public for testing purposes
 

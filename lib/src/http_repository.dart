@@ -1,10 +1,9 @@
 import 'dart:convert' show JsonCodec;
 
 import 'http_exception.dart';
-import 'repository_failure.dart';
-import 'repository_operation.dart';
-
-import 'repository.dart';
+import './base/repository_failure.dart';
+import './base/repository_operation.dart';
+import './base/repository.dart';
 import 'identifiable.dart';
 import 'package:dartz/dartz.dart';
 import 'package:http/http.dart' as http;

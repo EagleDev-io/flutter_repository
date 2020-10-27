@@ -2,11 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:mockito/mockito.dart';
-import 'package:repository/src/identifiable.dart';
-import 'package:repository/src/network_info.dart';
-import 'package:repository/src/remote_first_repository.dart';
-import 'package:repository/src/repository.dart';
-import 'package:repository/src/repository_failure.dart';
+import 'package:repository/repository.dart';
 import 'todo_item.dart';
 
 class MockRemoteRepository extends Mock implements Repository<TodoItem> {}

@@ -5,7 +5,7 @@ import 'identifiable.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
-import 'repository_operation.dart';
+import './base/repository_operation.dart';
 
 /// Implements CRUD for a well defined restful resource.
 ///
