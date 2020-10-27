@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:repository/src/in_memory_repository.dart';
-import 'package:repository/src/repository.dart';
+import 'package:repository/repository.dart';
 
 import 'todo_item.dart';
 

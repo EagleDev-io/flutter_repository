@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
 import 'package:repository/repository.dart';
-import 'package:repository/src/repository_failure.dart';
-import './identifiable.dart';
-import './task_extensions.dart';
+import './repository_failure.dart';
+import '../identifiable.dart';
+import '../task_extensions.dart';
 
 abstract class Add<EntityType> {
   /// Saves a new instance to repository

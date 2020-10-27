@@ -1,8 +1,8 @@
 library offline_first_repository;
 
-import 'package:repository/src/repository_failure.dart';
+import '../base/repository_failure.dart';
 
-import '../repository.dart';
+import '../base/repository.dart';
 import '../identifiable.dart';
 import '../network_info.dart';
 import 'package:dartz/dartz.dart';
@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:meta/meta.dart';
 import '../task_extensions.dart';
 import 'synchronization_batch_result.dart';
-import 'synchronized.dart';
+import '../synchronized.dart';
 
 /// OfflineFirstRepository
 ///

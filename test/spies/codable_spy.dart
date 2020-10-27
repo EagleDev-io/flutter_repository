@@ -1,5 +1,5 @@
 import 'package:mockito/mockito.dart';
-import 'package:repository/src/repository_operation.dart';
+import 'package:repository/repository.dart';
 
 abstract class Encoder<T> {
   Map<String, dynamic> encode(T object, RepositoryOperation operation);

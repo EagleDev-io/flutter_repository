@@ -10,6 +10,7 @@ dependencies:
   dartz:
   equatable: ^1.1.0
   http: ^0.12.0+4
+  cloud_firestore:
   hive:
   flutter:
     sdk: flutter

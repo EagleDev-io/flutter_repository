@@ -2,40 +2,47 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:repository/repository.dart';
-import 'package:repository/src/caching_repository.dart';
-
-import 'spies/repository_spy.dart';
-import 'todo_item.dart';
-import 'repository_extensions.dart';
+import '../spies/repository_spy.dart';
+import '../todo_item.dart';
+import '../repository_extensions.dart';
 
 class MockSourceRepository extends Mock implements Repository<TodoItem> {}
 
 class MockNetworkCheker extends Mock implements NetworkInfo {}
 
-class CacheStateSpy extends Mock implements CacheState {
-  final CacheState state;
+class CachingRespositoryStateManagerSpy extends Mock implements CachingManager {
+  final CachingManager manager;
 
-  CacheStateSpy(this.state) {
+  CachingRespositoryStateManagerSpy(this.manager) {
     configure();
   }
 
   void configure() {
-    when(shouldFetchFresh).thenAnswer((inv) => state.shouldFetchFresh);
-    when(setLastRefresh(any)).thenAnswer(
-        (inv) => state.setLastRefresh(inv.positionalArguments.first));
+    when(isValidCache).thenAnswer((inv) => manager.isValidCache);
+    when(shouldFetchFresh).thenAnswer((inv) => manager.shouldFetchFresh);
+
+    when(markRefreshDate(any)).thenAnswer(
+        (inv) => manager.markRefreshDate(inv.positionalArguments.first));
+
+    when(setHasInternetConnection(any)).thenAnswer((inv) =>
+        manager.setHasInternetConnection(inv.positionalArguments.first));
   }
 }
 
 void main() {
   CachingRepository<TodoItem> sut;
   RepositorySpy<TodoItem> cacheSpy;
-  CacheStateSpy stateSpy;
+  CachingRespositoryStateManagerSpy managerSpy;
   MockNetworkCheker networkCheckerMock;
   MockSourceRepository sourceMock;
-  final policy = CachingPolicy();
+  final policy = CachingPolicy.combine([
+    TimedCachingPolicy(outdatedAfter: Duration(minutes: 3)),
+    NetworkStatusCachingPolicy()
+  ]);
 
   // Constants
   final tTodoItem = TodoItem.newItem('test task');
+
   final tTodoItems = [
     TodoItem.newItem('Task1'),
     TodoItem.newItem('Task2'),
@@ -58,15 +65,17 @@ void main() {
           repository = InMemoryRepository.blank();
         });
 
-    stateSpy = CacheStateSpy(CacheState(policy: policy));
+    managerSpy =
+        CachingRespositoryStateManagerSpy(CachingManager(policy: policy));
 
     sut = CachingRepository(
       policy: null,
-      state: stateSpy,
       cache: cacheSpy,
       source: sourceMock,
       networkChecker: networkCheckerMock,
     );
+
+    sut.manager = managerSpy;
   });
 
   test('checks network status when calling get all', () async {
@@ -93,14 +102,14 @@ void main() {
   group('timeout threshold not exceeded', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
-      when(stateSpy.shouldFetchFresh).thenReturn(false);
+      when(managerSpy.shouldFetchFresh).thenReturn(false);
     });
 
     test('forwards getAll operation to cache', () async {
       final result = await sut.getAll();
       verify(cacheSpy.getAll()).called(1);
       verifyZeroInteractions(sourceMock);
-      verify(stateSpy.shouldFetchFresh);
+      verify(managerSpy.shouldFetchFresh);
     });
 
     test('forwards getById operation to cache', () async {
@@ -114,7 +123,7 @@ void main() {
       expect(result.getOrElse(() => null), tEntity);
       verify(cacheSpy.getById(tUniqueId)).called(1);
       verifyNever(sourceMock.getById(any));
-      verify(stateSpy.shouldFetchFresh).called(1);
+      verify(managerSpy.shouldFetchFresh).called(1);
     });
   });
 
@@ -124,13 +133,13 @@ void main() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
       when(sourceMock.getAll())
           .thenAnswer((_) async => Right(tTodoItemsWithID));
-      when(stateSpy.shouldFetchFresh).thenReturn(true);
+      when(managerSpy.shouldFetchFresh).thenReturn(true);
     });
     test('calls source getAll when cache is invalidated', () async {
       final result = await sut.getAll();
       verify(sourceMock.getAll()).called(1);
       verifyNever(cacheSpy.getAll());
-      verify(stateSpy.shouldFetchFresh);
+      verify(managerSpy.shouldFetchFresh);
     });
 
     test('populates cache when calling source getAll', () async {
@@ -152,7 +161,7 @@ void main() {
         () async {
       when(sourceMock.getAll()).thenAnswer((_) async => Right([]));
       await sut.getAll();
-      verify(stateSpy.setLastRefresh(any));
+      verify(managerSpy.markRefreshDate(any));
     });
 
     test(
@@ -190,7 +199,7 @@ void main() {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
       when(sourceMock.delete(any)).thenAnswer((_) async => Right(null));
-      when(stateSpy.shouldFetchFresh).thenReturn(false);
+      when(managerSpy.shouldFetchFresh).thenReturn(false);
     });
 
     test('add calls source.add and pipes result to cache.add', () async {
@@ -201,7 +210,7 @@ void main() {
       final result = await sut.add(tEntity);
 
       verify(sourceMock.add(tEntity)).called(1);
-      verifyNever(stateSpy.shouldFetchFresh);
+      verifyNever(managerSpy.shouldFetchFresh);
       verify(cacheSpy.add(tEntityNew));
       expect(result, Right(tEntityNew));
     });
@@ -212,7 +221,7 @@ void main() {
       final result = await sut.delete(tEntity);
       verify(sourceMock.delete(tEntity)).called(1);
       verify(cacheSpy.delete(tEntity)).called(1);
-      verifyNever(stateSpy.shouldFetchFresh);
+      verifyNever(managerSpy.shouldFetchFresh);
       assert(result.isRight());
     });
 
@@ -223,16 +232,18 @@ void main() {
       final result = await sut.update(tEntity);
       verify(sourceMock.update(tEntity)).called(1);
       verify(cacheSpy.update(tEntity)).called(1);
-      verifyNever(stateSpy.shouldFetchFresh);
+      verifyNever(managerSpy.shouldFetchFresh);
       assert(result.isRight());
     });
   });
+
   // =============== Offline Write operations =============== //
   group('Offline Write operations', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => false);
-      when(stateSpy.shouldFetchFresh).thenReturn(false);
+      when(managerSpy.shouldFetchFresh).thenReturn(false);
     });
+
     test('add returns connection failure', () async {
       final tEntity = TodoItem.newItem('test task');
       final result = await sut.add(tEntity);
@@ -274,27 +285,46 @@ void main() {
     test('Returns connection failure if no internet and cache not hydrated',
         () {});
 
-    test('getAll forward call to cache when expired cache valid time window',
+    test('getAll forward call to cache when expired valid time window',
         () async {
-      when(stateSpy.shouldFetchFresh).thenReturn(true);
       final result = await sut.getAll();
       verify(cacheSpy.getAll());
       verifyNever(sourceMock.getAll());
     });
 
     test('getById forward call to cache even if expired cache', () async {
-      when(stateSpy.shouldFetchFresh).thenReturn(true);
       final tUniqueId = UniqueId('123');
       final result = await sut.getById(tUniqueId);
       verify(cacheSpy.getById(tUniqueId));
       verifyNever(sourceMock.getById(any));
     });
 
-    test('when using cached results doesnt reset timeout interval', () async {
-      when(stateSpy.shouldFetchFresh).thenReturn(true);
+    test('doesnt reset timeout interval when using cached results', () async {
       final result = await sut.getAll();
       verify(cacheSpy.getAll());
-      verifyNever(stateSpy.setLastRefresh(any));
+      verifyNever(managerSpy.markRefreshDate(any));
     });
   });
+
+  // =============== CacheManager  =============== //
+  test('asks manager if should read from cache whenever getAll is called',
+      () async {
+    final result = await sut.getAll();
+    verify(managerSpy.shouldFetchFresh);
+  });
+
+  test('asks manager if should read from cache whenever getbyId is called',
+      () async {
+    final tUniqueId = UniqueId('123');
+    final result = await sut.getById(tUniqueId);
+    verify(managerSpy.shouldFetchFresh);
+  });
+
+  test('Updates manager with connectivity state whenever calling getAll',
+      () async {
+    final result = await sut.getAll();
+    verify(managerSpy.setHasInternetConnection(any));
+  });
+
+  test('Asks manager if should write to cache', () {});
 }

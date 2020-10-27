@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
 import 'package:meta/meta.dart';
-import 'package:repository/src/repository_failure.dart';
+import './base/repository_failure.dart';
 
-import './repository.dart';
+import './base/repository.dart';
 import './identifiable.dart';
 import './network_info.dart';
 import './task_extensions.dart';
