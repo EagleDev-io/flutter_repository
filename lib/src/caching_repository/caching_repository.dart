@@ -23,8 +23,7 @@ class CachingRepository<T extends WithId> extends Repository<T> {
     @required this.source,
     @required this.networkChecker,
   }) {
-    manager.policy =
-        CachingPolicy.combine([policy, NetworkStatusCachingPolicy()]);
+    manager.policy = NetworkStatusCachingPolicy().and(policy);
   }
 
   Future<bool> get _isConnected async {
@@ -84,7 +83,7 @@ class CachingRepository<T extends WithId> extends Repository<T> {
     final shouldRefresh = manager.shouldFetchFresh;
     if (shouldRefresh) {
       final result = await source.getById(id);
-      final entity = result.getOrElse(() => null);
+      final entity = result?.getOrElse(() => null);
       if (entity != null) {
         await _upsertIntoCache(entity);
       }

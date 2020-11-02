@@ -3,25 +3,52 @@ import 'package:repository/src/caching_repository/cache_state.dart';
 
 abstract class CachingPolicy {
   bool shouldInvalidateCache(CacheState state);
+}
 
-  static CachingPolicy combine(List<CachingPolicy> policies) {
-    final combinedPolicy = policies
-        .reduce((accum, policy) => _CombinedCachingPolicy(accum, policy));
-    return combinedPolicy;
+extension CombinedPolicy on CachingPolicy {
+  CachingPolicy and(CachingPolicy policy) {
+    return _CombinedCachingPolicy.and(this, policy);
+  }
+
+  CachingPolicy or(CachingPolicy policy) {
+    return _CombinedCachingPolicy.or(this, policy);
   }
 }
 
 class _CombinedCachingPolicy implements CachingPolicy {
   final CachingPolicy first;
   final CachingPolicy second;
+  final bool Function(bool, bool) operation;
 
-  _CombinedCachingPolicy(this.first, this.second);
+  _CombinedCachingPolicy(this.first, this.second, this.operation);
+
+  factory _CombinedCachingPolicy.and(
+    CachingPolicy first,
+    CachingPolicy second,
+  ) {
+    return _CombinedCachingPolicy(
+      first,
+      second,
+      (left, right) => left && right,
+    );
+  }
+
+  factory _CombinedCachingPolicy.or(
+    CachingPolicy first,
+    CachingPolicy second,
+  ) {
+    return _CombinedCachingPolicy(
+      first,
+      second,
+      (left, right) => left || right,
+    );
+  }
 
   @override
   bool shouldInvalidateCache(CacheState state) {
-    final result = first.shouldInvalidateCache(state) ||
-        second.shouldInvalidateCache(state);
-    return result;
+    final firstResult = first.shouldInvalidateCache(state);
+    final secondResult = second.shouldInvalidateCache(state);
+    return operation(firstResult, secondResult);
   }
 }
 
@@ -41,7 +68,6 @@ class TimedCachingPolicy extends CachingPolicy {
 
     final now = DateTime.now();
     final duration = now.difference(state.mostRecentRefresh).abs();
-    if (duration == null) return true;
     final satisfiesTimeWindow = duration < outdatedAfter;
 
     return !satisfiesTimeWindow;

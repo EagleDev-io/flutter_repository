@@ -21,7 +21,8 @@ class CachingManager {
   bool _isValidCache = false;
   CachingPolicy policy;
 
-  CachingManager({this.policy});
+  CachingManager({@required this.policy});
+
   bool get shouldFetchFresh => !_isValidCache;
   bool get isValidCache => _isValidCache;
 

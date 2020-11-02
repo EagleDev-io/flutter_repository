@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:repository/repository.dart';
+import '../spies/caching_repository_manager_spy.dart';
 import '../spies/repository_spy.dart';
 import '../todo_item.dart';
 import '../repository_extensions.dart';
@@ -10,35 +11,14 @@ class MockSourceRepository extends Mock implements Repository<TodoItem> {}
 
 class MockNetworkCheker extends Mock implements NetworkInfo {}
 
-class CachingRespositoryStateManagerSpy extends Mock implements CachingManager {
-  final CachingManager manager;
-
-  CachingRespositoryStateManagerSpy(this.manager) {
-    configure();
-  }
-
-  void configure() {
-    when(isValidCache).thenAnswer((inv) => manager.isValidCache);
-    when(shouldFetchFresh).thenAnswer((inv) => manager.shouldFetchFresh);
-
-    when(markRefreshDate(any)).thenAnswer(
-        (inv) => manager.markRefreshDate(inv.positionalArguments.first));
-
-    when(setHasInternetConnection(any)).thenAnswer((inv) =>
-        manager.setHasInternetConnection(inv.positionalArguments.first));
-  }
-}
-
 void main() {
   CachingRepository<TodoItem> sut;
   RepositorySpy<TodoItem> cacheSpy;
   CachingRespositoryStateManagerSpy managerSpy;
   MockNetworkCheker networkCheckerMock;
   MockSourceRepository sourceMock;
-  final policy = CachingPolicy.combine([
-    TimedCachingPolicy(outdatedAfter: Duration(minutes: 3)),
-    NetworkStatusCachingPolicy()
-  ]);
+  final policy = NetworkStatusCachingPolicy()
+      .and(TimedCachingPolicy(outdatedAfter: Duration(minutes: 3)));
 
   // Constants
   final tTodoItem = TodoItem.newItem('test task');
@@ -98,8 +78,8 @@ void main() {
     expect(result, Right(tTodoItemsWithID.length));
   });
 
-  // =============== Time threhold not exceeded =============== //
-  group('timeout threshold not exceeded', () {
+  // =============== Manager does not invalidate cache =============== //
+  group('Manager does not invalidate cache', () {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => true);
       when(managerSpy.shouldFetchFresh).thenReturn(false);
@@ -280,51 +260,43 @@ void main() {
     setUp(() {
       when(networkCheckerMock.isConnected).thenAnswer((_) async => false);
       when(sourceMock.getAll()).thenAnswer((_) async => Right([]));
+      when(sourceMock.getById(any)).thenAnswer((_) async => Right(tTodoItem));
     });
 
-    test('Returns connection failure if no internet and cache not hydrated',
-        () {});
-
-    test('getAll forward call to cache when expired valid time window',
+    test('asks manager if should read from cache whenever getAll is called',
         () async {
+      final _ = await sut.getAll();
+      verify(managerSpy.shouldFetchFresh);
+    });
+    test('asks manager if should read from cache whenever getbyId is called',
+        () async {
+      final tUniqueId = UniqueId('123');
+      final _ = await sut.getById(tUniqueId);
+      verify(managerSpy.shouldFetchFresh);
+    });
+
+    test('Updates manager with connectivity state whenever calling getAll',
+        () async {
+      when(networkCheckerMock.isConnected).thenAnswer((_) async => false);
+      final _ = await sut.getAll();
+      verify(managerSpy.setHasInternetConnection(any));
+    });
+
+    test('getAll forward call to cache when manager does not require fresh',
+        () async {
+      when(managerSpy.shouldFetchFresh).thenAnswer((_) => false);
       final result = await sut.getAll();
       verify(cacheSpy.getAll());
       verifyNever(sourceMock.getAll());
     });
 
-    test('getById forward call to cache even if expired cache', () async {
+    test('getById forward call to cache manager does not require refresh',
+        () async {
       final tUniqueId = UniqueId('123');
+      when(managerSpy.shouldFetchFresh).thenAnswer((_) => false);
       final result = await sut.getById(tUniqueId);
       verify(cacheSpy.getById(tUniqueId));
       verifyNever(sourceMock.getById(any));
     });
-
-    test('doesnt reset timeout interval when using cached results', () async {
-      final result = await sut.getAll();
-      verify(cacheSpy.getAll());
-      verifyNever(managerSpy.markRefreshDate(any));
-    });
   });
-
-  // =============== CacheManager  =============== //
-  test('asks manager if should read from cache whenever getAll is called',
-      () async {
-    final result = await sut.getAll();
-    verify(managerSpy.shouldFetchFresh);
-  });
-
-  test('asks manager if should read from cache whenever getbyId is called',
-      () async {
-    final tUniqueId = UniqueId('123');
-    final result = await sut.getById(tUniqueId);
-    verify(managerSpy.shouldFetchFresh);
-  });
-
-  test('Updates manager with connectivity state whenever calling getAll',
-      () async {
-    final result = await sut.getAll();
-    verify(managerSpy.setHasInternetConnection(any));
-  });
-
-  test('Asks manager if should write to cache', () {});
 }

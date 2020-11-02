@@ -15,4 +15,15 @@ void main() {
     final result = sut.shouldInvalidateCache(mockState);
     assert(!result);
   });
+
+  test('cache is not invalidated if time expired but no internet', () {
+    final combinedPolicy = NetworkStatusCachingPolicy()
+        .and(TimedCachingPolicy(outdatedAfter: Duration(minutes: 3)));
+
+    final tDate = DateTime.now().subtract(Duration(days: 1));
+    final tState = CacheState();
+    tState.markRefreshDate(tDate);
+    final result = combinedPolicy.shouldInvalidateCache(tState);
+    assert(!result);
+  });
 }
