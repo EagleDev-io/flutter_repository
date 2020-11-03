@@ -1,11 +1,11 @@
 import 'dart:convert' show JsonCodec;
 
-import 'package:repository/src/http_repository.dart';
-import 'identifiable.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
+import 'http_repository/http_repository.dart';
 
 import './base/repository_operation.dart';
+import './base/identifiable.dart';
 
 /// Implements CRUD for a well defined restful resource.
 ///

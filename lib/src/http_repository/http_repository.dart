@@ -1,13 +1,14 @@
 import 'dart:convert' show JsonCodec;
 
-import 'http_exception.dart';
-import './base/repository_failure.dart';
-import './base/repository_operation.dart';
-import './base/repository.dart';
-import 'identifiable.dart';
 import 'package:dartz/dartz.dart';
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
+
+import '../base/repository.dart';
+import '../base/repository_failure.dart';
+import '../base/repository_operation.dart';
+import 'http_exception.dart';
+import '../base/identifiable.dart';
 
 /// Flexible json HTTP repository
 ///

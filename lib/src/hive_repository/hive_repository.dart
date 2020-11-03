@@ -1,6 +1,6 @@
 import '../base/repository_failure.dart';
 import '../base/repository.dart';
-import '../identifiable.dart';
+import '../base/identifiable.dart';
 import 'package:dartz/dartz.dart';
 import 'package:hive/hive.dart';
 import 'package:meta/meta.dart';

@@ -3,7 +3,7 @@ library offline_first_repository;
 import '../base/repository_failure.dart';
 
 import '../base/repository.dart';
-import '../identifiable.dart';
+import '../base/identifiable.dart';
 import '../network_info.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';

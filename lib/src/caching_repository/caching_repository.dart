@@ -3,7 +3,7 @@ import '../base/repository_failure.dart';
 import '../base/repository.dart';
 import 'package:meta/meta.dart';
 
-import '../identifiable.dart';
+import '../base/identifiable.dart';
 import '../network_info.dart';
 import 'cache_manager.dart';
 import 'caching_policy.dart';

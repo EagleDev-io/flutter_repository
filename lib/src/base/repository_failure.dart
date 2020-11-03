@@ -1,6 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:repository/repository.dart';
-import 'package:repository/src/http_exception.dart';
+import '../http_repository/http_exception.dart';
 
 abstract class RepositoryBaseFailure {}
 

@@ -1,7 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:repository/repository.dart';
 import './repository_failure.dart';
-import '../identifiable.dart';
+import './identifiable.dart';
 import '../task_extensions.dart';
 
 abstract class Add<EntityType> {
@@ -60,8 +60,8 @@ abstract class ReadOnlyRepository<EntityType>
 abstract class WriteOnlyRepository<EntityType>
     with Add<EntityType>, Delete<EntityType>, Update<EntityType> {}
 
-abstract class Repository<EntityType> extends ReadOnlyRepository<EntityType>
-    implements WriteOnlyRepository<EntityType> {
+abstract class Repository<EntityType>
+    implements ReadOnlyRepository<EntityType>, WriteOnlyRepository<EntityType> {
   Future<Either<RepositoryBaseFailure, void>> clear() async {
     final result = Task(() => getAll()).bindEither((items) => Task(() async {
           for (final item in items) {

@@ -1,12 +1,13 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:repository/src/identifiable.dart';
 import 'package:repository/repository.dart';
+import 'package:repository/src/base/identifiable.dart';
 import 'package:uuid/uuid.dart';
+
 import './spies/repository_spy.dart';
-import 'todo_item.dart';
 import 'repository_extensions.dart';
+import 'todo_item.dart';
 
 class MockRemoteRepository extends Mock implements Repository<TodoItem> {}
 

@@ -7,7 +7,7 @@ import './base/repository.dart';
 
 import 'dart:async';
 
-import 'identifiable.dart';
+import './base/identifiable.dart';
 
 class FirebaseRepositoryConfiguration {
   final String collectionName;

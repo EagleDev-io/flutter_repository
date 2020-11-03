@@ -2,7 +2,7 @@ import 'package:dartz/dartz.dart';
 import './base/repository_failure.dart';
 
 import './base/repository.dart';
-import './identifiable.dart';
+import './base/identifiable.dart';
 
 typedef Endo<T> = void Function(T);
 

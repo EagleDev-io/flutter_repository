@@ -1,5 +1,5 @@
 import 'package:meta/meta.dart';
-import 'package:repository/src/identifiable.dart';
+import 'package:repository/src/base/identifiable.dart';
 import 'package:uuid/uuid.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
