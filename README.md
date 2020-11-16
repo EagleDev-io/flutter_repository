@@ -29,7 +29,7 @@ using an HttpRepository.
 We would also like to cache results to avoid calling repeating the same network calls, so lets use an InMemoryRepository
 for this (although a persisting respository would also work).
 
-```
+```dart
 final remoteRespository = HttpRepository<TodoItem>(..); // Source repository
 final inMemoryRespository = HttpRepository<TodoItem>(..); // Repository used to cache data
 final networkChecker = NetworkInfo(); //Some way of checking internet access
