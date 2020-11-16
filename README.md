@@ -97,3 +97,4 @@ TODO:
 - [] HttpRepository work with http or Dio
 - [] Make private and testable CachingState in CachingRepository
 - [] CachingRepository add caching policy time base, network based strategies and no strategy
+- [] CachingRepository consider the minimum type constraint required for each operation.

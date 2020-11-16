@@ -49,7 +49,7 @@ void main() {
         CachingRespositoryStateManagerSpy(CachingManager(policy: policy));
 
     sut = CachingRepository(
-      policy: null,
+      policy: policy,
       cache: cacheSpy,
       source: sourceMock,
       networkChecker: networkCheckerMock,
