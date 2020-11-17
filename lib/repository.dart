@@ -5,6 +5,8 @@ export 'src/in_memory_repository.dart';
 export 'src/restful_repository.dart';
 export 'src/network_info.dart';
 export 'src/base/repository.dart';
+export 'src/base/repository_function.dart';
+export 'src/base/repository_extensions.dart';
 export 'src/offline_first/offline_first_repository.dart';
 export 'src/offline_first/synchronization_batch_result.dart';
 export 'src/synchronized.dart';
