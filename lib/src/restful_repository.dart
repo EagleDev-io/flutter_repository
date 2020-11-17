@@ -6,6 +6,7 @@ import 'http_repository/http_repository.dart';
 
 import './base/repository_operation.dart';
 import './base/identifiable.dart';
+import './http_repository/http_repository_extensions.dart';
 
 /// Implements CRUD for a well defined restful resource.
 ///
@@ -23,7 +24,6 @@ class RestfulRepository<Entity extends WithId> extends HttpRepository<Entity> {
     @required
         Entity Function(Map<String, dynamic>, RepositoryOperation) fromJson,
   }) : super(
-            client: client,
             operationUrl: (operation, entity, id) {
               final putsIdPathSegment = [
                 RepositoryOperation.getById,
@@ -31,6 +31,7 @@ class RestfulRepository<Entity extends WithId> extends HttpRepository<Entity> {
               ].contains(operation);
               return putsIdPathSegment ? '$resourceUrl/$id' : resourceUrl;
             },
+            process: client.httpRepositoryProccesingFunction(jsonCodec),
             toJson: toJson,
             jsonCodec: jsonCodec,
             fromJson: fromJson);

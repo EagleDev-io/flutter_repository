@@ -1,7 +1,6 @@
 import 'dart:convert' show JsonCodec;
 
 import 'package:dartz/dartz.dart';
-import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 
 import '../base/repository.dart';
@@ -9,6 +8,9 @@ import '../base/repository_failure.dart';
 import '../base/repository_operation.dart';
 import 'http_exception.dart';
 import '../base/identifiable.dart';
+
+typedef HttpRepositoryProccesingFunction = Future<dynamic> Function(
+    RepositoryOperation, Map<String, dynamic>, String url);
 
 /// Flexible json HTTP repository
 ///
@@ -21,7 +23,7 @@ class HttpRepository<Entity> extends Repository<Entity>
   final Entity Function(Map<String, dynamic>, RepositoryOperation) fromJson;
   final String Function(RepositoryOperation, Entity, UniqueId id)
       operationUrl; // Entity might be null for some operations
-  final http.Client client;
+  final HttpRepositoryProccesingFunction process;
   final JsonCodec jsonCodec;
 
   static const void unit = null;
@@ -35,8 +37,8 @@ class HttpRepository<Entity> extends Repository<Entity>
   HttpRepository({
     @required this.operationUrl,
     JsonCodec jsonCodec,
-    @required this.client,
     @required this.toJson,
+    @required this.process,
     @required this.fromJson,
   }) : this.jsonCodec = jsonCodec ?? JsonCodec();
 
@@ -46,18 +48,11 @@ class HttpRepository<Entity> extends Repository<Entity>
       final url = resourceURLForEntity(entity, RepositoryOperation.add);
       final jsonMap = toJson(entity, RepositoryOperation.add);
       jsonMap.removeWhere((key, value) => value == null);
-      final jsonString = jsonCodec.encode(jsonMap);
-      final response = await client.post(
-        '$url',
-        body: jsonString,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      ).validate();
-      final createdJsonMap =
-          jsonCodec.decode(response.body) as Map<String, dynamic>;
-      final createdObject = fromJson(createdJsonMap, RepositoryOperation.add);
+
+      final response = await process(RepositoryOperation.add, jsonMap, url)
+          as Map<String, dynamic>;
+
+      final createdObject = fromJson(response, RepositoryOperation.add);
       return createdObject;
     }).attempt().map(
         (either) => either.leftMap((errorObj) => handleException(errorObj)));
@@ -68,7 +63,7 @@ class HttpRepository<Entity> extends Repository<Entity>
   Future<Either<RepositoryBaseFailure, void>> delete(Entity entity) {
     final url = resourceURLForEntity(entity, RepositoryOperation.delete);
     final task = Task(() async {
-      final response = await client.delete(url, headers: {'Accept': '*/*'});
+      final response = await process(RepositoryOperation.delete, null, url);
       return response;
     }).attempt().map((either) => either
         .leftMap((errorObj) => RepositoryFailure.server('$errorObj'))
@@ -80,23 +75,16 @@ class HttpRepository<Entity> extends Repository<Entity>
   Future<Either<RepositoryBaseFailure, List<Entity>>> getAll() {
     final task = Task(() async {
       final url = resourceURLForEntity(null, RepositoryOperation.getAll);
-      final response = await client.get(url);
-      final bodyString = response.body;
-      final json = jsonCodec.decode(bodyString);
-      if (json is List<dynamic>) {
-        final objects = json
-            .map((jsonMap) => fromJson(
-                jsonMap as Map<String, dynamic>, RepositoryOperation.getAll))
-            .toList();
-        return objects;
-      } else if (json is Map<String, dynamic>) {
-        final jsonList = json.values.whereType<List<dynamic>>().first;
-        final objects = jsonList
-            .map((jsonMap) => fromJson(
-                jsonMap as Map<String, dynamic>, RepositoryOperation.getAll))
-            .toList();
-        return objects;
-      }
+
+      final response =
+          await process(RepositoryOperation.getAll, null, url) as List<dynamic>;
+
+      final objects = response
+          .map((jsonMap) => fromJson(
+              jsonMap as Map<String, dynamic>, RepositoryOperation.getAll))
+          .toList();
+
+      return objects;
     }).attempt().map((either) => either.leftMap(
           (errorObj) => handleException(errorObj),
         ));
@@ -109,10 +97,9 @@ class HttpRepository<Entity> extends Repository<Entity>
     final task = Task(() async {
       final url =
           resourceURLForEntity(null, RepositoryOperation.getById, id: id);
-      final response = await client.get('$url').validate();
-      final bodyString = response.body;
-      final jsonMap = jsonCodec.decode(bodyString) as Map<String, dynamic>;
-      final object = fromJson(jsonMap, RepositoryOperation.getById);
+      final response = await process(RepositoryOperation.getById, null, url)
+          as Map<String, dynamic>;
+      final object = fromJson(response, RepositoryOperation.getById);
       return object;
     })
         .attempt()
@@ -123,18 +110,11 @@ class HttpRepository<Entity> extends Repository<Entity>
 
   @override
   Future<Either<RepositoryBaseFailure, void>> update(Entity entity) async {
-    final task = Task(() {
-      final jsonMap = toJson(entity, RepositoryOperation.update);
-      final jsonString = jsonCodec.encode(jsonMap);
+    final task = Task(() async {
       final url = resourceURLForEntity(entity, RepositoryOperation.update);
-      return client.put(
-        url,
-        body: jsonString,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      ).validate();
+      final jsonMap = toJson(entity, RepositoryOperation.update);
+      final response = await process(RepositoryOperation.update, jsonMap, url);
+      return response;
     }).attempt().map(
         (either) => either.leftMap((e) => handleException(e)).map((_) => unit));
     return task.run();
@@ -148,17 +128,8 @@ class HttpRepository<Entity> extends Repository<Entity>
       patch.removeWhere((key, value) => value == null);
 
       final url = resourceURLForEntity(null, RepositoryOperation.edit, id: id);
-      final jsonString = jsonCodec.encode(patch);
-      final response = await client.patch(
-        url,
-        body: jsonString,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      ).validate();
-      final responseMap =
-          jsonCodec.decode(response.body) as Map<String, dynamic>;
+      final responseMap = await process(RepositoryOperation.edit, patch, url)
+          as Map<String, dynamic>;
       final object = fromJson(responseMap, RepositoryOperation.edit);
 
       return object;
@@ -174,26 +145,5 @@ class HttpRepository<Entity> extends Repository<Entity>
       return HttpFailure.fromException(error);
     }
     return RepositoryFailure.server('$error');
-  }
-}
-
-extension ValidateHttpResponse on Future<http.Response> {
-  Future<http.Response> ensure(
-      {bool Function(http.Response) satisfies,
-      Exception Function(http.Response) otherwise}) {
-    return then((response) {
-      final passesCheck = satisfies(response);
-      if (!passesCheck) {
-        throw otherwise(response);
-      }
-      return response;
-    });
-  }
-
-  Future<http.Response> validate() {
-    return ensure(
-        satisfies: (response) => response.statusCode < 400,
-        otherwise: (response) => HttpException(
-            statusCode: response.statusCode, body: response.body));
   }
 }
