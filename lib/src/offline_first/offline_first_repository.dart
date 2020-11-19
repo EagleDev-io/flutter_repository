@@ -8,7 +8,7 @@ import '../network_info.dart';
 import 'package:dartz/dartz.dart';
 import 'package:flutter/material.dart';
 import 'package:meta/meta.dart';
-import '../task_extensions.dart';
+import '../utils/task_extensions.dart';
 import 'synchronization_batch_result.dart';
 import '../synchronized.dart';
 

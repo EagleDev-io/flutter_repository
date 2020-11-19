@@ -4,7 +4,7 @@ import 'package:repository/repository.dart';
 
 import 'todo_item.dart';
 
-abstract class TodoRepository with Add<TodoItem>, Delete<TodoItem> {}
+abstract class TodoRepository implements Add<TodoItem>, Delete<TodoItem> {}
 
 void main() {
   InMemoryRepository<TodoItem> repository;

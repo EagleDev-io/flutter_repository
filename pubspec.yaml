@@ -12,8 +12,6 @@ dependencies:
   http: ^0.12.0+4
   cloud_firestore:
   hive:
-  flutter:
-    sdk: flutter
 
 dev_dependencies:
   json_serializable: ^3.2.5

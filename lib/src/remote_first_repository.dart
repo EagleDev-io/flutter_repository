@@ -5,7 +5,7 @@ import './base/repository_failure.dart';
 import './base/repository.dart';
 import './base/identifiable.dart';
 import './network_info.dart';
-import './task_extensions.dart';
+import './utils/task_extensions.dart';
 
 /// RemoteFirstRepository coordinates two repository instances
 ///

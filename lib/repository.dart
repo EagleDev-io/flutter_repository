@@ -22,4 +22,4 @@ export 'src/caching_repository/cache_state.dart';
 export 'src/caching_repository/cache_manager.dart';
 export 'src/remote_first_repository.dart';
 export 'src/base/repository_operation.dart';
-export 'src/task_extensions.dart';
+export 'src/utils/task_extensions.dart';
