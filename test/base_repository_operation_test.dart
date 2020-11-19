@@ -21,4 +21,5 @@ void main() {
     assert(update.operation == RepositoryOperation.update);
     assert(delete.operation == RepositoryOperation.delete);
   });
+
 }
